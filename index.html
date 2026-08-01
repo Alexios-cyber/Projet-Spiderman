@@ -256,6 +256,26 @@ ul.plain{margin:0;padding:0;list-style:none;}
   padding:12px 18px;border-radius:13px;font-size:13px;opacity:0;pointer-events:none;
   transition:.25s;z-index:60;max-width:90%;text-align:center;}
 #toast.show{opacity:1;transform:translate(-50%,0);}
+
+.toggle{display:flex;align-items:center;gap:13px;width:100%;text-align:left;
+  background:var(--surf);border:1px solid var(--line);border-radius:16px;
+  padding:14px 15px;margin-bottom:13px;transition:.15s;}
+.toggle.on{border-color:var(--lime);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--lime) 13%,var(--surf)),var(--surf));}
+.toggle .sw{width:42px;height:24px;border-radius:99px;background:var(--line);
+  flex-shrink:0;position:relative;transition:.18s;}
+.toggle .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;
+  border-radius:50%;background:var(--muted);transition:.18s;}
+.toggle.on .sw{background:color-mix(in srgb,var(--lime) 45%,var(--surf));}
+.toggle.on .sw::after{left:21px;background:var(--lime);}
+.toggle b{display:block;font-size:14px;font-weight:700;}
+.toggle em{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);
+  font-style:normal;margin-top:3px;line-height:1.4;}
+.dot{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;
+  border-radius:4px;font-size:9px;font-weight:700;margin-right:6px;vertical-align:1px;}
+.dot.ok{background:color-mix(in srgb,var(--ok) 25%,transparent);color:var(--ok);}
+.dot.no{background:color-mix(in srgb,var(--red) 22%,transparent);color:var(--red);}
+.nm.missing{color:var(--muted);}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -743,7 +763,12 @@ function seasonize(it,seed){
   const cru=/\(cru/.test(it.n)?" (cru)":"";
   return {n:ch[0]+cru, q:it.q, k: g?Math.round(g*ch[1]/100):it.k};
 }
-function mealItems(d,i){ return MEALS[d][i].items.map((it,j)=>seasonize(it,d+i+j)); }
+function mealItems(d,i){
+  const base=MEALS[d][i].items.map((it,j)=>seasonize(it,d+i+j));
+  if(!adapt) return base;
+  const ST=stock(), used=new Set();
+  return base.map((it,j)=>useStock(it,d+i+j,ST,used));
+}
 
 /* liste de courses modulable : on part du plan, puis l'utilisateur ajoute/retire */
 let list=S.get("list",null);
@@ -801,6 +826,39 @@ function findFood(name){
     if(sc>score){ score=sc; best=f; }
   });
   return score>=40?best:null;
+}
+
+
+/* ---------- ADAPTER LES REPAS AUX COURSES FAITES ---------- */
+let adapt=S.get("adapt",false);
+/* un article coché "pris" dans la liste = disponible à la maison */
+function stock(){
+  const out={};
+  list.filter(x=>x.done).forEach(it=>{
+    const f=findFood(it.n);
+    const cat=f?f.c:catOf(it);
+    if(cat==="Divers") return;
+    (out[cat]=out[cat]||[]).push({n:f?f.n:it.n, k:f?f.k:null});
+  });
+  return out;
+}
+const stockCount=()=>list.filter(x=>x.done).length;
+
+/* remplace un ingrédient par un équivalent déjà acheté du même rayon */
+function useStock(it,seed,ST,used){
+  const f=findFood(it.n);
+  const cat=f?f.c:null;
+  if(!cat||cat==="Épicerie") return it;               // huiles, épices : on garde
+  const pool=ST[cat];
+  if(!pool||!pool.length) return Object.assign({},it,{miss:true});
+  const ref=norm(f?f.n:it.n);
+  if(pool.some(p=>norm(p.n)===ref)){ used.add(ref); return Object.assign({},it,{ok:true}); }
+  /* on évite de répéter le même aliment dans un repas */
+  const free=pool.filter(p=>!used.has(norm(p.n)));
+  const ch=pick(free.length?free:pool,seed), g=gramsOf(it.q);
+  used.add(norm(ch.n));
+  return {n:ch.n, q:it.q, ok:true,
+    k:(ch.k!=null&&g)?Math.round(g*ch.k/100):it.k};
 }
 
 /* ---------- REPAS PERSONNALISÉS ---------- */
@@ -1070,7 +1128,14 @@ function monthBar(){
 function vRepas(){
   const c=calc();
   let h=monthBar();
-  h+=`<p class="note">Poids à peser cru. Fruits, légumes et poissons suivent la saison.${c?` Objectif <b style="color:var(--lime)">${c.target} kcal/jour</b> — modifie un repas et les autres se rééquilibrent.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
+  const nStock=stockCount();
+  h+=`<button class="toggle ${adapt?'on':''}" id="adaptT">
+    <span class="sw"></span>
+    <span><b>Cuisiner avec mes courses</b>
+    <em>${adapt?(nStock?`${nStock} aliments dispo — les repas s'y adaptent`:"Aucun article coché « pris » dans Courses"):"Suivre le plan de saison"}</em></span></button>`;
+  if(adapt&&!nStock) h+=`<div class="info">Va dans <b>Courses</b> et coche les articles que tu as
+    achetés : ils seront considérés comme disponibles et les repas se composeront avec.</div>`;
+  h+=`<p class="note">Poids à peser cru.${adapt?" Les repas piochent dans ce que tu as acheté.":" Fruits, légumes et poissons suivent la saison."}${c?` Objectif <b style="color:var(--lime)">${c.target} kcal/jour</b> — modifie un repas et les autres se rééquilibrent.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
   DAYS.forEach(d=>{
     const op=openDay===d, td=d===TODAY, D=dayInfo(d), tot=dayKcal(d);
     h+=`<div class="card"><div class="chead ${td?'now':''}" data-day="${d}">
@@ -1092,7 +1157,9 @@ function vRepas(){
             <button class="edit" data-edit="${k}">Modifier</button></span></span>`;
         mo.items.forEach(g=>{
           const q=mo.custom?g.q:scaleQ(g.q,D.r), kk=mo.custom?g.k:scaleK(g.k,D.r);
-          h+=`<span class="between" style="margin-top:2px"><span class="nm ${on?'done':''}">${esc(g.n)}</span>
+          const dot=g.ok?'<span class="dot ok">✓</span>':g.miss?'<span class="dot no">!</span>':'';
+          h+=`<span class="between" style="margin-top:2px">
+            <span class="nm ${on?'done':''} ${g.miss?'missing':''}">${dot}${esc(g.n)}</span>
             <span class="between" style="gap:9px"><span class="qty">${esc(q)}</span>
             <span class="kcal">${kk}</span></span></span>`;
         });
@@ -1100,7 +1167,8 @@ function vRepas(){
       });
       h+=`<div class="total"><span>Total du jour</span><span>~${tot} kcal</span></div>
         <div class="rowbtn"><button class="mini" data-cart="${d}">
-          Ajouter les ingrédients du jour à ma liste</button></div>`;
+          Ajouter les ingrédients du jour à ma liste</button>
+          ${adapt?`<button class="mini" data-miss="${d}">Ajouter ce qui manque</button>`:''}</div>`;
     }
     h+=`</div>`;
   });
@@ -1386,7 +1454,7 @@ function goHome(){
 function refresh(){ if(tab) go(tab); else renderHome(); }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-food],[data-di],[data-g],[data-cart],[data-cartmeal],[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-food],[data-di],[data-g],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -1408,6 +1476,14 @@ document.addEventListener("click",e=>{
       if(!list.some(x=>x.id===i.id)) list.push({id:i.id,n:i.name,q:i.qty,c:c.category,done:false});
     }));
     S.set("list",list); return refresh();
+  }
+  if(t.id==="adaptT"){ adapt=!adapt; S.set("adapt",adapt); return refresh(); }
+  if(t.dataset.miss){
+    const d=t.dataset.miss, r=dayInfo(d).r; let mi=[];
+    MEALS[d].forEach((m,i)=>{ if(mealOf(d,i).custom) return;
+      mealItems(d,i).forEach(x=>{ if(x.miss) mi.push({n:x.n,q:scaleQ(x.q,r)}); }); });
+    const n=toCart(mi);
+    return toast(n?n+" article"+(n>1?"s":"")+" ajouté"+(n>1?"s":"")+" à ta liste":"Rien ne manque");
   }
   if(t.dataset.edit){ const [dd,ii]=t.dataset.edit.split("-"); return openEditor(dd,+ii); }
   if(t.dataset.food!==undefined){
