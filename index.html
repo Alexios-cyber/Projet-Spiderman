@@ -37,9 +37,7 @@ button{font-family:inherit;color:inherit;}
   animation:drop .9s cubic-bezier(.2,.8,.2,1) both;}
 @keyframes drop{from{transform:translateY(-26px);opacity:0}to{transform:none;opacity:1}}
 .hero h1{font-family:var(--disp);font-size:clamp(48px,17vw,74px);margin:10px 0 0;
-  letter-spacing:2px;line-height:.9;text-transform:uppercase;
-  background:linear-gradient(180deg,#fff 30%,var(--red));-webkit-background-clip:text;
-  background-clip:text;color:transparent;}
+  letter-spacing:2px;line-height:.9;text-transform:uppercase;color:var(--red);}
 .tag{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:2.5px;
   text-transform:uppercase;margin:6px 0 0;}
 
@@ -218,6 +216,18 @@ ul.plain{margin:0;padding:0;list-style:none;}
   border-bottom:1px solid var(--line);}
 .rayon .cnt{letter-spacing:0;color:var(--cyan);}
 .sechead + .rayon{margin-top:2px;}
+
+.months{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;margin:0 -14px 0;
+  padding-left:14px;padding-right:14px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.months::-webkit-scrollbar{display:none;}
+.mo{flex:0 0 auto;background:var(--surf);border:1px solid var(--line);color:var(--muted);
+  border-radius:11px;padding:9px 13px;font-family:var(--mono);font-size:11px;
+  letter-spacing:.6px;text-transform:uppercase;transition:.12s;}
+.mo.on{background:color-mix(in srgb,var(--lime) 20%,var(--surf));border-color:var(--lime);
+  color:var(--text);font-weight:700;}
+.mo:active{transform:scale(.94);}
+.seasontag{font-family:var(--mono);font-size:11px;color:var(--lime);letter-spacing:1.4px;
+  text-transform:uppercase;margin:4px 0 12px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -587,24 +597,134 @@ const S = {
   set(k,v){ try{ localStorage.setItem("c75:"+k,JSON.stringify(v)); }catch(e){} }
 };
 let meals=S.get("meals",{}), workouts=S.get("workouts",{}), weights=S.get("weights",[]);
+/* catalogue : rayons fixes + produits frais du mois choisi */
+const slug=t=>t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+function catalog(){
+  const M=SEASON[month];
+  const fixed={}; GROCERIES.forEach(c=>fixed[c.category]=c);
+  const prod=(pref,pool,qty)=>pool.map(x=>({id:pref+"-"+slug(x[0]),name:x[0],qty}));
+  return [
+    fixed["Viande"],
+    {category:"Poisson", icon:"🐟", items:prod("ps",M.p,"2 à 3 pavés")},
+    fixed["Œufs & laitages"],
+    {category:"Fruits", icon:"🍎", items:prod("fr",M.f,"500 g")},
+    {category:"Légumes", icon:"🥦", items:prod("lg",M.l,"500 g")},
+    fixed["Féculents & céréales"],
+    fixed["Épicerie"]
+  ].filter(Boolean);
+}
+const CATS=["Viande","Poisson","Œufs & laitages","Fruits","Légumes",
+  "Féculents & céréales","Épicerie"];
+const ICON_OF={"Viande":"🥩","Poisson":"🐟","Œufs & laitages":"🥚","Fruits":"🍎",
+  "Légumes":"🥦","Féculents & céréales":"🌾","Épicerie":"🫙","Divers":"🛒"};
+/* anciens identifiants du plan d'origine */
+const LEGACY={p1:"Œufs & laitages",p2:"Viande",p3:"Viande",p4:"Poisson",p5:"Poisson",
+  p6:"Viande",p7:"Œufs & laitages",p8:"Œufs & laitages",a5:"Œufs & laitages",
+  l1:"Fruits",l2:"Fruits",l3:"Fruits",l4:"Légumes",l5:"Légumes",l6:"Légumes",
+  l7:"Légumes",l8:"Légumes",f1:"Féculents & céréales",f2:"Féculents & céréales",
+  f3:"Féculents & céréales",f4:"Féculents & céréales",f5:"Féculents & céréales",
+  f6:"Féculents & céréales",a2:"Épicerie",a3:"Épicerie",a4:"Épicerie"};
+function catOf(it){
+  if(it.c&&CATS.includes(it.c)) return it.c;
+  if(LEGACY[it.id]) return LEGACY[it.id];
+  if(/^fr-/.test(it.id)) return "Fruits";
+  if(/^lg-/.test(it.id)) return "Légumes";
+  if(/^ps-/.test(it.id)) return "Poisson";
+  let found="Divers";
+  catalog().forEach(c=>c.items.forEach(x=>{ if(x.id===it.id) found=c.category; }));
+  return found;
+}
+
+
+/* ---------- CALENDRIER DE SAISON (France) ---------- */
+const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin",
+  "Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const MSHORT=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+/* [nom, kcal/100g] — produits crus */
+const SEASON=[
+  { /* Janvier */
+    f:[["Pomme",52],["Poire",57],["Kiwi",61],["Orange",47],["Clémentine",53]],
+    l:[["Poireau",29],["Chou frisé",49],["Carotte",41],["Courge butternut",45],["Épinards",23],["Endive",17],["Chou-fleur",25],["Panais",75]],
+    p:[["Cabillaud",82],["Lieu noir",80],["Hareng",158],["Saint-Jacques",88]] },
+  { /* Février */
+    f:[["Pomme",52],["Poire",57],["Kiwi",61],["Orange",47],["Pamplemousse",42]],
+    l:[["Poireau",29],["Chou vert",25],["Carotte",41],["Endive",17],["Topinambour",73],["Épinards",23],["Céleri-rave",42],["Panais",75]],
+    p:[["Cabillaud",82],["Lieu noir",80],["Saint-Jacques",88],["Maquereau",205]] },
+  { /* Mars */
+    f:[["Pomme",52],["Poire",57],["Kiwi",61],["Orange",47]],
+    l:[["Poireau",29],["Épinards",23],["Carotte",41],["Chou-fleur",25],["Radis",16],["Blette",19],["Endive",17]],
+    p:[["Cabillaud",82],["Maquereau",205],["Lieu noir",80],["Bar",97]] },
+  { /* Avril */
+    f:[["Pomme",52],["Rhubarbe",21],["Kiwi",61],["Fraise",33]],
+    l:[["Asperge",20],["Radis",16],["Épinards",23],["Petits pois",81],["Carotte",41],["Blette",19],["Laitue",15]],
+    p:[["Maquereau",205],["Bar",97],["Cabillaud",82],["Lieu jaune",80]] },
+  { /* Mai */
+    f:[["Fraise",33],["Cerise",63],["Rhubarbe",21],["Pomme",52]],
+    l:[["Asperge",20],["Petits pois",81],["Radis",16],["Courgette",17],["Laitue",15],["Épinards",23],["Fève",88]],
+    p:[["Maquereau",205],["Sardine",165],["Bar",97],["Lieu noir",80]] },
+  { /* Juin */
+    f:[["Fraise",33],["Cerise",63],["Abricot",48],["Framboise",52],["Melon",34]],
+    l:[["Courgette",17],["Haricot vert",31],["Tomate",18],["Concombre",15],["Poivron",26],["Petits pois",81],["Laitue",15]],
+    p:[["Sardine",165],["Maquereau",205],["Bar",97],["Thon",108]] },
+  { /* Juillet */
+    f:[["Abricot",48],["Pêche",39],["Melon",34],["Framboise",52],["Myrtille",57],["Cerise",63]],
+    l:[["Tomate",18],["Courgette",17],["Aubergine",25],["Poivron",26],["Haricot vert",31],["Concombre",15]],
+    p:[["Sardine",165],["Thon",108],["Maquereau",205],["Bar",97]] },
+  { /* Août */
+    f:[["Pêche",39],["Melon",34],["Prune",46],["Figue",74],["Mûre",43],["Framboise",52]],
+    l:[["Tomate",18],["Aubergine",25],["Courgette",17],["Poivron",26],["Haricot vert",31],["Maïs",86]],
+    p:[["Sardine",165],["Thon",108],["Maquereau",205],["Dorade",96]] },
+  { /* Septembre */
+    f:[["Raisin",69],["Figue",74],["Prune",46],["Pomme",52],["Poire",57],["Mûre",43]],
+    l:[["Tomate",18],["Courgette",17],["Aubergine",25],["Poireau",29],["Brocoli",34],["Épinards",23],["Betterave",43]],
+    p:[["Dorade",96],["Maquereau",205],["Lieu noir",80],["Sardine",165]] },
+  { /* Octobre */
+    f:[["Raisin",69],["Pomme",52],["Poire",57],["Coing",57],["Kiwi",61]],
+    l:[["Potiron",26],["Brocoli",34],["Poireau",29],["Chou vert",25],["Carotte",41],["Épinards",23],["Champignon",22]],
+    p:[["Dorade",96],["Lieu noir",80],["Cabillaud",82],["Moules",86]] },
+  { /* Novembre */
+    f:[["Pomme",52],["Poire",57],["Kiwi",61],["Clémentine",53],["Coing",57]],
+    l:[["Potiron",26],["Poireau",29],["Chou vert",25],["Carotte",41],["Panais",75],["Endive",17],["Épinards",23]],
+    p:[["Cabillaud",82],["Lieu noir",80],["Saint-Jacques",88],["Hareng",158]] },
+  { /* Décembre */
+    f:[["Pomme",52],["Poire",57],["Kiwi",61],["Orange",47],["Clémentine",53]],
+    l:[["Poireau",29],["Chou de Bruxelles",43],["Carotte",41],["Courge butternut",45],["Endive",17],["Panais",75],["Épinards",23]],
+    p:[["Cabillaud",82],["Saint-Jacques",88],["Lieu noir",80],["Hareng",158]] }
+];
+let month=S.get("month",new Date().getMonth());
+const SAISON=m=>["Hiver","Hiver","Printemps","Printemps","Printemps","Été",
+  "Été","Été","Automne","Automne","Automne","Hiver"][m];
+
+/* choix stable : même jour + même repas = même produit */
+function pick(pool,seed){
+  let hsh=0; for(let i=0;i<seed.length;i++) hsh=(hsh*31+seed.charCodeAt(i))|0;
+  return pool[Math.abs(hsh)%pool.length];
+}
+const gramsOf=q=>{ const m=/(\d+)\s*g/.exec(q||""); return m?+m[1]:null; };
+
+/* remplace fruits / légumes / poissons par les produits du mois choisi */
+function seasonize(it,seed){
+  const low=it.n.toLowerCase(), M=SEASON[month];
+  let pool=null;
+  if(/banane|fruits? rouges?|myrtille|^fruit/.test(low)) pool=M.f;
+  else if(/légume|brocoli|haricot vert|courgette|salade|crudité/.test(low)) pool=M.l;
+  else if(/poisson|saumon/.test(low) && !/ou /.test(low)) pool=M.p;
+  if(!pool) return it;
+  const ch=pick(pool,seed+month), g=gramsOf(it.q);
+  const cru=/\(cru/.test(it.n)?" (cru)":"";
+  return {n:ch[0]+cru, q:it.q, k: g?Math.round(g*ch[1]/100):it.k};
+}
+function mealItems(d,i){ return MEALS[d][i].items.map((it,j)=>seasonize(it,d+i+j)); }
+
 /* liste de courses modulable : on part du plan, puis l'utilisateur ajoute/retire */
 let list=S.get("list",null);
 if(list===null){
   list=[];
-  GROCERIES.forEach(c=>c.items.forEach(it=>list.push({id:it.id,n:it.name,q:it.qty,c:c.category,done:false})));
+  catalog().forEach(c=>c.items.forEach(it=>list.push({id:it.id,n:it.name,q:it.qty,c:c.category,done:false})));
   S.set("list",list);
 }
 
-
-/* rayon d'un article (rétro-compatible avec les listes déjà enregistrées) */
-const CATS=GROCERIES.map(c=>c.category);
-const ICON_OF={}; GROCERIES.forEach(c=>ICON_OF[c.category]=c.icon);
-function catOf(it){
-  if(it.c&&CATS.includes(it.c)) return it.c;
-  let found="Divers";
-  GROCERIES.forEach(c=>c.items.forEach(x=>{ if(x.id===it.id) found=c.category; }));
-  return found;
-}
 
 /* ---------- PROFIL & CALCUL DES BESOINS ---------- */
 const DEF_PROFILE={sex:"H",age:null,height:174,start:82,weight:82,goal:75,rate:0.5,act:1.55};
@@ -658,7 +778,7 @@ function calc(){
 const dateFR=d=>d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
 
 /* ---------- adaptation des portions ---------- */
-function baseKcal(d){ return MEALS[d].reduce((s,m)=>s+m.items.reduce((a,i)=>a+(i.k||0),0),0); }
+function baseKcal(d){ return MEALS[d].map((m,i)=>mealItems(d,i).reduce((a,x)=>a+(x.k||0),0)).reduce((a,b)=>a+b,0); }
 function ratio(d){
   const c=calc(); if(!c) return 1;
   return Math.max(0.55,Math.min(1.7, c.target/baseKcal(d)));
@@ -681,8 +801,8 @@ const TODAY=DAYS[DAYMAP[new Date().getDay()]];
 openDay=TODAY;
 
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const kcalOf=(m,r)=>m.items.reduce((s,i)=>s+scaleK(i.k||0,r===undefined?1:r),0);
-const dayKcal=d=>{ const r=ratio(d); return MEALS[d].reduce((s,m)=>s+kcalOf(m,r),0); };
+const kcalOf=(d,i,r)=>mealItems(d,i).reduce((s,x)=>s+scaleK(x.k||0,r===undefined?1:r),0);
+const dayKcal=d=>{ const r=ratio(d); return MEALS[d].map((m,i)=>kcalOf(d,i,r)).reduce((a,b)=>a+b,0); };
 const cw=()=>weights.length?weights[weights.length-1].weight:P.weight;
 
 function pcts(){
@@ -817,9 +937,10 @@ function vCourses(){
       <button class="mini" id="gUncheck">Tout décocher</button></div>`;
   }
 
-  /* --- catalogue --- */
-  h+=`<div class="sechead"><h3>Suggestions</h3><span>Touche pour ajouter</span></div>`;
-  GROCERIES.forEach(c=>{
+  /* --- catalogue de saison --- */
+  h+=`<div class="sechead"><h3>Suggestions</h3>
+    <span>${MONTHS[month].toLowerCase()}</span></div>`+monthBar();
+  catalog().forEach(c=>{
     h+=`<div class="rayon"><span>${c.icon} ${esc(c.category)}</span></div><div class="chips">`;
     c.items.forEach(it=>{
       const already=inList.has(it.id);
@@ -835,9 +956,17 @@ function vCourses(){
   return h;
 }
 
+function monthBar(){
+  return `<div class="months">${MONTHS.map((m,i)=>
+    `<button class="mo ${i===month?'on':''}" data-month="${i}">${MSHORT[i]}</button>`).join("")}</div>
+    <p class="seasontag">${SAISON(month)} · produits de ${MONTHS[month].toLowerCase()}</p>`;
+}
+
 function vRepas(){
   const c=calc();
-  let h=`<p class="note">Poids à peser cru, avant cuisson.${c?` Portions calées sur ton objectif de <b style="color:var(--lime)">${c.target} kcal/jour</b>.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
+  let h=monthBar();
+  h+=`<p class="note">Poids à peser cru, avant cuisson. Fruits, légumes et poissons suivent
+    la saison.${c?` Portions calées sur <b style="color:var(--lime)">${c.target} kcal/jour</b>.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
   DAYS.forEach(d=>{
     const op=openDay===d, td=d===TODAY, r=ratio(d), tot=dayKcal(d);
     h+=`<div class="card"><div class="chead ${td?'now':''}" data-day="${d}">
@@ -849,8 +978,8 @@ function vRepas(){
         const k=d+"-"+i, on=meals[k];
         h+=`<div class="row" data-m="${k}"><span class="box ${on?'on':''}"></span><span class="grow">
           <span class="between" style="margin-bottom:5px"><span class="mtype">${esc(m.type)}</span>
-          <span class="kcal">~${kcalOf(m,r)} kcal</span></span>`;
-        m.items.forEach(g=>{
+          <span class="kcal">~${kcalOf(d,i,r)} kcal</span></span>`;
+        mealItems(d,i).forEach(g=>{
           h+=`<span class="between" style="margin-top:2px"><span class="nm ${on?'done':''}">${esc(g.n)}</span>
             <span class="between" style="gap:9px"><span class="qty">${esc(scaleQ(g.q,r))}</span>
             <span class="kcal">${scaleK(g.k,r)}</span></span></span>`;
@@ -1037,7 +1166,7 @@ function goHome(){
 function refresh(){ if(tab) go(tab); else renderHome(); }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset");
   if(!t) return;
   if(t.id==="back") return goHome();
   if(t.dataset.go) return go(t.dataset.go);
@@ -1047,19 +1176,20 @@ document.addEventListener("click",e=>{
   if(t.dataset.add){
     if(list.some(x=>x.id===t.dataset.add)) return;
     let src=null;
-    GROCERIES.forEach(c=>c.items.forEach(i=>{ if(i.id===t.dataset.add) src=i; }));
-    if(src){ let cat="Divers"; GROCERIES.forEach(c=>c.items.forEach(i=>{ if(i.id===src.id) cat=c.category; }));
+    catalog().forEach(c=>c.items.forEach(i=>{ if(i.id===t.dataset.add) src=i; }));
+    if(src){ let cat="Divers"; catalog().forEach(c=>c.items.forEach(i=>{ if(i.id===src.id) cat=c.category; }));
       list.push({id:src.id,n:src.name,q:src.qty,c:cat,done:false}); S.set("list",list); }
     return refresh();
   }
   if(t.id==="gClear"){ list=list.filter(x=>!x.done); S.set("list",list); return refresh(); }
   if(t.id==="gUncheck"){ list.forEach(x=>x.done=false); S.set("list",list); return refresh(); }
   if(t.id==="gReset"){
-    GROCERIES.forEach(c=>c.items.forEach(i=>{
+    catalog().forEach(c=>c.items.forEach(i=>{
       if(!list.some(x=>x.id===i.id)) list.push({id:i.id,n:i.name,q:i.qty,c:c.category,done:false});
     }));
     S.set("list",list); return refresh();
   }
+  if(t.dataset.month!==undefined){ month=+t.dataset.month; S.set("month",month); return refresh(); }
   if(t.dataset.set){
     const v=t.dataset.val;
     P[t.dataset.set]= t.dataset.set==="sex" ? v : parseFloat(v);
