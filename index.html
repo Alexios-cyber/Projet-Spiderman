@@ -1827,6 +1827,27 @@ function logResults(q){
   return h+`</div>`;
 }
 
+
+/* les repas cochés avant l'arrivée du journal n'y figuraient pas : on les rattrape */
+function migrateMeals(){
+  if(S.get("migMeals",false)) return;
+  Object.keys(meals).forEach(key=>{
+    if(!meals[key]) return;
+    const p=key.split("-"), d=p[0], i=+p[1];
+    if(!MEALS[d]||!MEALS[d][i]) return;
+    const date=dateOfDay(d);
+    if((log[date]||[]).some(x=>x.src===key)) return;   // déjà présent
+    const r=dayInfo(d).r, mo=mealOf(d,i);
+    mo.items.forEach(x=>{
+      const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
+      const f=findFood(nm);
+      const g=gramsOf(mo.custom?x.q:scaleQ(x.q,r))||100;
+      if(f) logAdd(f.n,g,key,date);
+    });
+  });
+  S.set("migMeals",true);
+}
+
 /* ---- navigation ---- */
 const VIEWS={courses:vCourses,repas:vRepas,sport:vSport,poids:vPoids,guide:vGuide,
   profil:vProfil,edit:vEdit,journal:vJournal};
@@ -2072,6 +2093,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.id==="gIn"){ e.preventDefault(); document.getElementById("gAdd").click(); }
 });
 
+migrateMeals();
 goHome();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
