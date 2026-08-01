@@ -305,6 +305,26 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .hero-tile{border-color:var(--cyan);
   background:color-mix(in srgb,var(--cyan) 9%,var(--surf));box-shadow:var(--shadow-l);}
 .hero-tile h3{font-size:19px;color:var(--brand);}
+
+.week{position:relative;background:var(--surf);border:1px solid var(--line);
+  border-radius:22px;padding:16px 15px 13px;margin-bottom:18px;box-shadow:var(--shadow);}
+.wk-t{font-family:var(--disp);font-size:17px;font-weight:800;letter-spacing:-.4px;color:var(--brand);}
+.wk-s{font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+.wk-bars{display:flex;gap:6px;align-items:flex-end;}
+.wk-d{flex:1;background:none;border:none;padding:0;display:flex;flex-direction:column;
+  align-items:center;gap:5px;}
+.wk-bar{width:100%;height:74px;background:var(--surf2);border-radius:8px;
+  display:flex;align-items:flex-end;overflow:hidden;}
+.wk-fill{width:100%;border-radius:8px;transition:height .35s cubic-bezier(.2,.8,.2,1);}
+.wk-fill.ok{background:var(--lime);}
+.wk-fill.over{background:var(--red);}
+.wk-fill.under{background:var(--cyan);opacity:.65;}
+.wk-fill.none{background:transparent;}
+.wk-d em{font-family:var(--mono);font-size:10px;color:var(--muted);font-style:normal;}
+.wk-d i{font-family:var(--mono);font-size:9.5px;color:var(--muted);font-style:normal;opacity:.75;}
+.wk-d.now em{color:var(--brand);font-weight:500;}
+.wk-d.now .wk-bar{outline:1.5px solid var(--brand);outline-offset:1.5px;}
+.wk-d:active{transform:scale(.93);}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -318,6 +338,7 @@ ul.plain{margin:0;padding:0;list-style:none;}
     <p class="tag" id="tagline"></p>
   </div>
   <div class="dash" id="dash"></div>
+  <div class="week" id="week"></div>
   <div class="menu" id="menu"></div>
 </div>
 
@@ -718,6 +739,7 @@ function catOf(it){
 const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin",
   "Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MSHORT=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+const MSHORT_D=["L","M","M","J","V","S","D"];
 /* [nom, kcal/100g] — produits crus */
 const SEASON=[
   { /* Janvier */
@@ -986,18 +1008,85 @@ function syncList(){
   return add;
 }
 
+
+/* ingrédients nécessaires pour un seul jour */
+function neededDay(d){
+  const out=new Map(), r=dayInfo(d).r;
+  MEALS[d].forEach((m,i)=>{
+    const mo=mealOf(d,i);
+    mo.items.forEach(x=>{
+      const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
+      if(!out.has(norm(nm))) out.set(norm(nm),{n:nm,q:mo.custom?x.q:scaleQ(x.q,r)});
+    });
+  });
+  return out;
+}
+/* appelé dès qu'un repas change : la liste suit sans rien demander */
+function autoSync(d){
+  const all=needed(), day=neededDay(d);
+  let add=0, rm=0;
+  /* on retire les ingrédients ajoutés automatiquement qui ne servent plus nulle part
+     (jamais les ajouts perso, jamais ce qui est déjà coché « pris ») */
+  list=list.filter(x=>{
+    if(x.o!=="auto"||x.done||all.has(norm(x.n))) return true;
+    rm++; return false;
+  });
+  day.forEach((v,k)=>{
+    if(list.some(x=>norm(x.n)===k)) return;
+    const f=findFood(v.n);
+    list.push({id:"a"+Date.now()+Math.random().toString(36).slice(2,5),
+      n:v.n,q:v.q,c:f?f.c:"Divers",o:"auto",done:false});
+    add++;
+  });
+  S.set("list",list);
+  return {add,rm};
+}
+
 /* ---------- JOURNAL : CE QUE J'AI VRAIMENT MANGÉ ---------- */
 let log=S.get("log",{});
 const iso=d=>d.toISOString().slice(0,10);
 let logDate=iso(new Date());
 const dayLog=()=>log[logDate]||[];
 function saveLog(a){ if(a.length) log[logDate]=a; else delete log[logDate]; S.set("log",log); }
-function logAdd(name,g,src){
+function logAdd(name,g,src,date){
   const f=FOOD.find(x=>x.n===name);
   if(!f) return;
-  const a=dayLog().slice();
+  const d=date||logDate;
+  const a=(log[d]||[]).slice();
   a.push({n:f.n,g,k:f.k,p:f.p,gl:f.g,l:f.l,src:src||""});
-  saveLog(a);
+  log[d]=a; S.set("log",log);
+}
+
+/* ---- semaine en cours ---- */
+function weekStart(){
+  const d=new Date(); d.setHours(12,0,0,0);
+  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  return d;
+}
+function weekDates(){
+  const s=weekStart();
+  return DAYS.map((_,i)=>{ const d=new Date(s); d.setDate(s.getDate()+i); return iso(d); });
+}
+const dateOfDay=n=>weekDates()[DAYS.indexOf(n)];
+const kcalOfDate=d=>Math.round(logTotals(log[d]||[]).k);
+
+/* cocher un repas = l'enregistrer dans le journal du bon jour */
+function toggleMealLog(d,i){
+  const key=mkey(d,i), date=dateOfDay(d), on=!meals[key];
+  meals[key]=on; S.set("meals",meals);
+  if(on){
+    const r=dayInfo(d).r, mo=mealOf(d,i);
+    mo.items.forEach(x=>{
+      const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
+      const f=findFood(nm);
+      const g=gramsOf(mo.custom?x.q:scaleQ(x.q,r))||100;
+      if(f) logAdd(f.n,g,key,date);
+    });
+  }else{
+    const a=(log[date]||[]).filter(x=>x.src!==key);
+    if(a.length) log[date]=a; else delete log[date];
+    S.set("log",log);
+  }
 }
 function logTotals(a){
   a=a||dayLog();
@@ -1236,8 +1325,31 @@ function renderHome(){
   const subs={courses:list.filter(x=>x.done).length+"/"+list.length+" articles", repas:p.m+"% suivi", sport:nw+"/7 séances",
     poids:weights.length?weights.length+" pesées":"Aucune pesée", guide:"22 exercices"};
   const kc=c?c.target+" kcal/j":"À configurer";
-  const TJ=logTotals(log[iso(new Date())]||[]);
+  const today=iso(new Date());
+  const TJ=logTotals(log[today]||[]);
   const jsub=c?`${Math.round(TJ.k)} / ${c.target} kcal`:`${Math.round(TJ.k)} kcal aujourd'hui`;
+
+  /* --- ma semaine --- */
+  const wd=weekDates(), tgt=c?c.target:2200;
+  const vals=wd.map(kcalOfDate);
+  const logged=vals.filter(v=>v>0);
+  const avg=logged.length?Math.round(logged.reduce((a,b)=>a+b,0)/logged.length):0;
+  const top=Math.max(tgt*1.15,...vals);
+  document.getElementById("week").innerHTML=`
+    <div class="between" style="margin-bottom:12px">
+      <span class="wk-t">Ma semaine</span>
+      <span class="wk-s">${logged.length?`${avg} kcal / jour en moyenne`:"Rien enregistré"}</span>
+    </div>
+    <div class="wk-bars">
+      ${wd.map((d,i)=>{
+        const v=vals[i], hp=Math.max(3,Math.round(v/top*100));
+        const st=v===0?"none":v>tgt*1.05?"over":v<tgt*0.75?"under":"ok";
+        return `<button class="wk-d ${d===today?'now':''}" data-jday="${d}">
+          <span class="wk-bar"><span class="wk-fill ${st}" style="height:${hp}%"></span></span>
+          <em>${MSHORT_D[i]}</em><i>${v||"–"}</i></button>`;
+      }).join("")}
+    </div>
+    <div class="wk-line" style="--p:${Math.min(100,Math.round(tgt/top*100))}%"></div>`;
   document.getElementById("menu").innerHTML=
     (profileOK()?"":`<button class="banner" data-go="profil" style="grid-column:span 2">
       <span class="ic" style="background:color-mix(in srgb,var(--red) 20%,transparent)">
@@ -1694,9 +1806,10 @@ function vJournal(){
     <p class="note">Enregistre un repas prévu tel quel.</p><div class="chips">`;
   const pd=DAYS[(new Date(logDate+"T12:00:00").getDay()+6)%7], r=dayInfo(pd).r;
   MEALS[pd].forEach((m,i)=>{
-    h+=`<button class="chip add" data-logmeal="${pd}:${i}">
-      <span class="plus">+</span><span><span class="cn">${esc(m.type)}</span>
-      <span class="cq">${kcalOf(pd,i,r)} kcal</span></span></button>`;
+    const on=!!meals[mkey(pd,i)];
+    h+=`<button class="chip add ${on?'in':''}" data-logmeal="${pd}:${i}">
+      <span class="plus">${on?'✓':'+'}</span><span><span class="cn">${esc(m.type)}</span>
+      <span class="cq">${kcalOf(pd,i,r)} kcal${on?" · enregistré":""}</span></span></button>`;
   });
   return h+`</div>`;
 }
@@ -1774,7 +1887,7 @@ function goHome(){
 function refresh(){ if(tab) go(tab); else renderHome(); }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-food],[data-di],[data-g],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-food],[data-di],[data-g],[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -1806,6 +1919,7 @@ document.addEventListener("click",e=>{
     }));
     S.set("list",list); return refresh();
   }
+  if(t.dataset.jday){ logDate=t.dataset.jday; return go("journal"); }
   if(t.dataset.log){ logAdd(t.dataset.log,defaultG(t.dataset.log)); return refresh(); }
   if(t.dataset.lrm!==undefined){ const a=dayLog().slice(); a.splice(+t.dataset.lrm,1); saveLog(a); return refresh(); }
   if(t.dataset.lg){
@@ -1822,16 +1936,9 @@ document.addEventListener("click",e=>{
   }
   if(t.dataset.logmeal){
     const [d,i]=t.dataset.logmeal.split(":");
-    const r=dayInfo(d).r, mo=mealOf(d,+i);
-    let n=0;
-    mo.items.forEach(x=>{
-      const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
-      const f=findFood(nm);
-      const g=gramsOf(mo.custom?x.q:scaleQ(x.q,r))||100;
-      if(f){ logAdd(f.n,g,"repas"); n++; }
-    });
-    refresh();
-    return toast(n?"Repas enregistré ("+n+" aliments)":"Aliments non reconnus");
+    const was=!!meals[mkey(d,+i)];
+    toggleMealLog(d,+i); refresh();
+    return toast(was?"Repas retiré du journal":"Repas enregistré");
   }
   if(t.id==="adaptT"){ adapt=!adapt; S.set("adapt",adapt); return refresh(); }
   if(t.dataset.miss){
@@ -1859,11 +1966,17 @@ document.addEventListener("click",e=>{
   if(t.dataset.savemeal){
     custom[mkey(edit.d,edit.i)]=edit.draft.map(x=>Object.assign({},x));
     S.set("custom",custom);
-    const dd=edit.d; edit=null; openDay=dd; return go("repas");
+    const dd=edit.d; edit=null; openDay=dd;
+    const r=autoSync(dd);
+    go("repas");
+    const msg=[r.add?`+${r.add} dans les courses`:"",r.rm?`−${r.rm} retiré${r.rm>1?"s":""}`:""]
+      .filter(Boolean).join(" · ");
+    return msg?toast("Repas enregistré · "+msg):toast("Repas enregistré");
   }
   if(t.dataset.resetmeal){
     delete custom[mkey(edit.d,edit.i)]; S.set("custom",custom);
-    const dd=edit.d, ii=edit.i; edit=null; return openEditor(dd,ii);
+    const dd=edit.d, ii=edit.i; edit=null;
+    autoSync(dd); return openEditor(dd,ii);
   }
   if(t.dataset.cartmeal){
     const n=toCart(edit.draft.map(x=>({n:x.n,q:dispQ(x)})));
@@ -1907,7 +2020,7 @@ document.addEventListener("click",e=>{
     list.push({id:"u"+Date.now(),n:v,q:"",c:"Divers",o:"user",done:false});
     S.set("list",list); el.value=""; return refresh();
   }
-  if(t.dataset.m){ meals[t.dataset.m]=!meals[t.dataset.m]; S.set("meals",meals); return refresh(); }
+  if(t.dataset.m){ const [dd,ii]=t.dataset.m.split("-"); toggleMealLog(dd,+ii); return refresh(); }
   if(t.dataset.day){ openDay=(openDay===t.dataset.day)?null:t.dataset.day; return refresh(); }
   if(t.dataset.ex){ openEx=(openEx===t.dataset.ex)?null:t.dataset.ex; return refresh(); }
   if(t.dataset.del){ weights=weights.filter(x=>x.date!==t.dataset.del); S.set("weights",weights); return refresh(); }
