@@ -977,8 +977,9 @@ const toG=(v,u)=>Math.max(1,Math.round(v*perUnit(u)));
 function needed(){
   const out=new Map();
   DAYS.forEach(d=>{
-    const r=dayInfo(d).r, mo0=null;
+    const r=dayInfo(d).r;
     MEALS[d].forEach((m,i)=>{
+      if(meals[mkey(d,i)]) return;          // déjà mangé : plus besoin de l'acheter
       const mo=mealOf(d,i);
       mo.items.forEach(x=>{
         const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
@@ -993,6 +994,8 @@ function unusedItems(){
   const need=needed();
   return list.filter(x=>x.o!=="user"&&!x.done&&!need.has(norm(x.n)));
 }
+/* nombre de repas déjà cochés sur la semaine */
+const eatenCount=()=>DAYS.reduce((s,d)=>s+MEALS[d].filter((m,i)=>meals[mkey(d,i)]).length,0);
 function syncList(){
   const need=needed();
   let add=0;
@@ -1013,6 +1016,7 @@ function syncList(){
 function neededDay(d){
   const out=new Map(), r=dayInfo(d).r;
   MEALS[d].forEach((m,i)=>{
+    if(meals[mkey(d,i)]) return;            // repas déjà mangé
     const mo=mealOf(d,i);
     mo.items.forEach(x=>{
       const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
@@ -1436,8 +1440,11 @@ function vCourses(){
     <button class="mini" id="gSync">Synchroniser avec mes repas</button>
     ${un.length?`<button class="mini" id="gPurge">Retirer ${un.length} article${un.length>1?"s":""} inutilisé${un.length>1?"s":""}</button>`:""}
     <button class="mini" id="gReset">Recharger la liste du plan</button></div>`;
-  if(un.length) h+=`<div class="info" style="margin-top:12px">Inutilisés dans tes repas actuels :
-    ${un.map(x=>esc(x.n)).join(", ")}. Tes ajouts personnels ne sont jamais retirés.</div>`;
+  const ate=eatenCount();
+  h+=`<div class="info" style="margin-top:12px">La synchronisation ne compte que les repas
+    <b>pas encore cochés</b>${ate?` — ${ate} repas déjà mangé${ate>1?"s":""} cette semaine ${ate>1?"sont ignorés":"est ignoré"}.`:"."}
+    ${un.length?`<br><br><b style="color:var(--red)">Plus nécessaires :</b> ${un.map(x=>esc(x.n)).join(", ")}.`:""}
+    <br><br>Tes ajouts personnels et ce que tu as coché « pris » ne sont jamais retirés.</div>`;
   return h;
 }
 
