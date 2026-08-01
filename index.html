@@ -138,6 +138,39 @@ input::placeholder{color:var(--muted);}
 .stat span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;}
 .del{background:none;border:none;color:var(--muted);font-size:15px;padding:0 2px;}
 ul.plain{margin:0;padding:0;list-style:none;}
+
+/* ---- liste de courses type Bring! ---- */
+.chips{display:flex;flex-wrap:wrap;gap:9px;}
+.chip{background:var(--surf);border:1px solid var(--line);border-radius:14px;
+  padding:10px 12px;display:flex;align-items:center;gap:9px;text-align:left;
+  transition:transform .1s,border-color .12s,opacity .12s;max-width:100%;}
+.chip:active{transform:scale(.94);}
+.chip .cn{font-size:13.5px;font-weight:500;line-height:1.2;}
+.chip .cq{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-top:2px;}
+.chip.on{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surf));}
+.chip.on .cn{text-decoration:line-through;color:var(--muted);}
+.chip .tick{width:19px;height:19px;border-radius:6px;border:2px solid var(--line);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;}
+.chip.on .tick{background:var(--ok);border-color:var(--ok);}
+.chip.on .tick::after{content:"";width:4px;height:8px;border:solid var(--bg);
+  border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px);}
+.chip .x{background:none;border:none;color:var(--muted);font-size:15px;padding:0 0 0 2px;line-height:1;}
+.chip.add{border-style:dashed;color:var(--muted);}
+.chip.add.in{opacity:.32;}
+.chip.add .plus{color:var(--cyan);font-size:15px;line-height:1;font-weight:700;}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 11px;}
+.sechead h3{font-family:var(--disp);font-size:17px;letter-spacing:1.2px;
+  text-transform:uppercase;margin:0;}
+.sechead span{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.sechead:first-child{margin-top:0;}
+.empty{background:var(--surf);border:1px dashed var(--line);border-radius:16px;
+  padding:22px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6;}
+.mini{background:var(--surf2);border:1px solid var(--line);border-radius:11px;
+  padding:9px 13px;font-family:var(--mono);font-size:11px;color:var(--muted);
+  letter-spacing:.8px;text-transform:uppercase;}
+.mini:active{border-color:var(--red);}
+.catname{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.6px;
+  text-transform:uppercase;margin:16px 0 9px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -483,8 +516,14 @@ const S = {
   get(k,d){ try{ const v=localStorage.getItem("c75:"+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem("c75:"+k,JSON.stringify(v)); }catch(e){} }
 };
-let groceries=S.get("groceries",{}), meals=S.get("meals",{}),
-    workouts=S.get("workouts",{}), weights=S.get("weights",[]);
+let meals=S.get("meals",{}), workouts=S.get("workouts",{}), weights=S.get("weights",[]);
+/* liste de courses modulable : on part du plan, puis l'utilisateur ajoute/retire */
+let list=S.get("list",null);
+if(list===null){
+  list=[];
+  GROCERIES.forEach(c=>c.items.forEach(it=>list.push({id:it.id,n:it.name,q:it.qty,done:false})));
+  S.set("list",list);
+}
 let tab=null, openDay=null, openEx=null;
 
 const DAYMAP=[6,0,1,2,3,4,5];
@@ -497,8 +536,7 @@ const dayKcal=d=>MEALS[d].reduce((s,m)=>s+kcalOf(m),0);
 const cw=()=>weights.length?weights[weights.length-1].weight:START_WEIGHT;
 
 function pcts(){
-  const tg=GROCERIES.reduce((s,c)=>s+c.items.length,0);
-  const g=tg?Math.round(Object.values(groceries).filter(Boolean).length/tg*100):0;
+  const g=list.length?Math.round(list.filter(x=>x.done).length/list.length*100):0;
   const m=Math.round(Object.values(meals).filter(Boolean).length/(DAYS.length*4)*100);
   const w=Math.round(Object.values(workouts).filter(Boolean).length/DAYS.length*100);
   return {g,m,w,all:Math.round((g+m+w)/3)};
@@ -561,7 +599,7 @@ function renderHome(){
       <p class="togo">↓ ${togo} kg avant l'objectif</p>
     </div>`;
 
-  const subs={courses:p.g+"% coché", repas:p.m+"% suivi", sport:nw+"/7 séances",
+  const subs={courses:list.filter(x=>x.done).length+"/"+list.length+" articles", repas:p.m+"% suivi", sport:nw+"/7 séances",
     poids:weights.length?weights.length+" pesées":"Aucune pesée", guide:"22 exercices"};
   document.getElementById("menu").innerHTML=
     ["courses","repas","sport","poids"].map(k=>`
@@ -579,17 +617,49 @@ function renderHome(){
 
 /* ---- vues ---- */
 function vCourses(){
-  let h=`<p class="note">Coche au fur et à mesure dans le magasin.</p>`;
+  const done=list.filter(x=>x.done).length;
+  const inList=new Set(list.map(x=>x.id));
+
+  let h=`<div class="wbar">
+    <input id="gIn" type="text" placeholder="Ajouter un article…" autocomplete="off">
+    <button class="addb" id="gAdd">+</button></div>`;
+
+  /* --- ma liste --- */
+  h+=`<div class="sechead"><h3>Ma liste</h3>
+    <span>${done}/${list.length} pris</span></div>`;
+  if(!list.length){
+    h+=`<div class="empty">Ta liste est vide.<br>Pioche dans les suggestions ci-dessous
+      ou ajoute un article.</div>`;
+  }else{
+    h+=`<div class="chips">`;
+    list.forEach(it=>{
+      h+=`<span class="chip ${it.done?'on':''}">
+        <span class="tick" data-tog="${esc(it.id)}"></span>
+        <span data-tog="${esc(it.id)}"><span class="cn">${esc(it.n)}</span>
+        ${it.q?`<span class="cq">${esc(it.q)}</span>`:''}</span>
+        <button class="x" data-rm="${esc(it.id)}" aria-label="Retirer">✕</button></span>`;
+    });
+    h+=`</div>`;
+    if(done) h+=`<div style="margin-top:13px;display:flex;gap:9px;flex-wrap:wrap">
+      <button class="mini" id="gClear">Retirer les ${done} pris</button>
+      <button class="mini" id="gUncheck">Tout décocher</button></div>`;
+  }
+
+  /* --- catalogue --- */
+  h+=`<div class="sechead"><h3>Suggestions</h3><span>Touche pour ajouter</span></div>`;
   GROCERIES.forEach(c=>{
-    h+=`<div class="card"><div class="chead">${esc(c.category)}</div>`;
+    h+=`<div class="catname">${esc(c.category)}</div><div class="chips">`;
     c.items.forEach(it=>{
-      const on=groceries[it.id];
-      h+=`<div class="row" data-g="${it.id}"><span class="box ${on?'on':''}"></span>
-        <span class="grow between"><span class="nm ${on?'done':''}">${esc(it.name)}</span>
-        <span class="qty">${esc(it.qty)}</span></span></div>`;
+      const already=inList.has(it.id);
+      h+=`<button class="chip add ${already?'in':''}" data-add="${it.id}">
+        <span class="plus">${already?'✓':'+'}</span>
+        <span><span class="cn">${esc(it.name)}</span>
+        <span class="cq">${esc(it.qty)}</span></span></button>`;
     });
     h+=`</div>`;
   });
+  h+=`<div style="margin-top:20px"><button class="mini" id="gReset">
+    Recharger la liste complète du plan</button></div>`;
   return h;
 }
 
@@ -729,12 +799,34 @@ function goHome(){
 function refresh(){ if(tab) go(tab); else renderHome(); }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-g],[data-m],[data-w],[data-day],[data-ex],[data-del],#back,#wAdd");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],#back,#wAdd,#gAdd,#gClear,#gUncheck,#gReset");
   if(!t) return;
   if(t.id==="back") return goHome();
   if(t.dataset.go) return go(t.dataset.go);
   if(t.dataset.w){ e.stopPropagation(); workouts[t.dataset.w]=!workouts[t.dataset.w]; S.set("workouts",workouts); return refresh(); }
-  if(t.dataset.g){ groceries[t.dataset.g]=!groceries[t.dataset.g]; S.set("groceries",groceries); return refresh(); }
+  if(t.dataset.tog){ const it=list.find(x=>x.id===t.dataset.tog); if(it){ it.done=!it.done; S.set("list",list); } return refresh(); }
+  if(t.dataset.rm){ list=list.filter(x=>x.id!==t.dataset.rm); S.set("list",list); return refresh(); }
+  if(t.dataset.add){
+    if(list.some(x=>x.id===t.dataset.add)) return;
+    let src=null;
+    GROCERIES.forEach(c=>c.items.forEach(i=>{ if(i.id===t.dataset.add) src=i; }));
+    if(src){ list.push({id:src.id,n:src.name,q:src.qty,done:false}); S.set("list",list); }
+    return refresh();
+  }
+  if(t.id==="gClear"){ list=list.filter(x=>!x.done); S.set("list",list); return refresh(); }
+  if(t.id==="gUncheck"){ list.forEach(x=>x.done=false); S.set("list",list); return refresh(); }
+  if(t.id==="gReset"){
+    GROCERIES.forEach(c=>c.items.forEach(i=>{
+      if(!list.some(x=>x.id===i.id)) list.push({id:i.id,n:i.name,q:i.qty,done:false});
+    }));
+    S.set("list",list); return refresh();
+  }
+  if(t.id==="gAdd"){
+    const el=document.getElementById("gIn"); const v=(el.value||"").trim();
+    if(!v) return;
+    list.push({id:"u"+Date.now(),n:v,q:"",done:false});
+    S.set("list",list); el.value=""; return refresh();
+  }
   if(t.dataset.m){ meals[t.dataset.m]=!meals[t.dataset.m]; S.set("meals",meals); return refresh(); }
   if(t.dataset.day){ openDay=(openDay===t.dataset.day)?null:t.dataset.day; return refresh(); }
   if(t.dataset.ex){ openEx=(openEx===t.dataset.ex)?null:t.dataset.ex; return refresh(); }
@@ -747,7 +839,10 @@ document.addEventListener("click",e=>{
     S.set("weights",weights); return refresh();
   }
 });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&tab) goHome(); });
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&tab) goHome();
+  if(e.key==="Enter"&&e.target.id==="gIn"){ e.preventDefault(); document.getElementById("gAdd").click(); }
+});
 
 goHome();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
