@@ -1,6 +1,6 @@
 {
-  "name": "Chantier 75",
-  "short_name": "Chantier 75",
+  "name": "Vertigo",
+  "short_name": "Vertigo",
   "description": "Suivi courses, repas, sport et poids",
   "start_url": "./index.html",
   "scope": "./",
