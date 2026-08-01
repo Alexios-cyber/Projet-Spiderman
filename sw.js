@@ -1,4 +1,4 @@
-const CACHE = "vertigo-v5";
+const CACHE = "vertigo-v7";
 const RUNTIME = "vertigo-runtime";
 const FILES = [
   "./",

@@ -171,6 +171,53 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .mini:active{border-color:var(--red);}
 .catname{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1.6px;
   text-transform:uppercase;margin:16px 0 9px;}
+
+/* ---- profil ---- */
+.field{margin-bottom:15px;}
+.field>label{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:1.6px;text-transform:uppercase;margin-bottom:7px;}
+.field input{width:100%;}
+.seg{display:flex;gap:7px;flex-wrap:wrap;}
+.seg button{flex:1;min-width:64px;background:var(--surf);border:1px solid var(--line);
+  color:var(--muted);border-radius:12px;padding:11px 8px;font-size:13px;font-weight:500;
+  transition:.12s;}
+.seg button.on{background:color-mix(in srgb,var(--red) 18%,var(--surf));
+  border-color:var(--red);color:var(--text);font-weight:700;}
+.seg button:active{transform:scale(.96);}
+.seg.col{flex-direction:column;}
+.seg.col button{flex:none;text-align:left;min-width:0;}
+.seg .sub{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+.res{background:linear-gradient(135deg,var(--surf),rgba(34,26,72,.5));
+  border:1px solid var(--line);border-radius:18px;padding:18px;margin:6px 0 14px;}
+.res .big{font-family:var(--disp);font-size:44px;line-height:1;letter-spacing:1px;color:var(--lime);}
+.res .big small{font-size:15px;color:var(--muted);letter-spacing:0;}
+.res .lbl{font-family:var(--mono);font-size:10px;color:var(--muted);
+  letter-spacing:1.6px;text-transform:uppercase;margin:0 0 4px;}
+.res hr{border:none;border-top:1px solid var(--line);margin:15px 0;}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;}
+.kv span:last-child{font-family:var(--mono);font-weight:700;}
+.warn{background:color-mix(in srgb,var(--red) 12%,var(--surf));border:1px solid var(--red);
+  border-radius:14px;padding:13px 15px;font-size:12.5px;line-height:1.6;margin-bottom:12px;}
+.warn b{color:var(--red);}
+.info{background:var(--surf);border:1px solid var(--line);border-radius:14px;
+  padding:13px 15px;font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:12px;}
+.savebar{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 25%);
+  padding:18px 0 calc(env(safe-area-inset-bottom) + 10px);}
+.save{width:100%;background:var(--red);border:none;border-radius:15px;padding:16px;
+  font-family:var(--disp);font-size:18px;letter-spacing:1.5px;text-transform:uppercase;color:#fff;}
+.save:active{transform:scale(.98);}
+.banner{background:linear-gradient(135deg,color-mix(in srgb,var(--red) 22%,var(--surf)),var(--surf));
+  border:1px solid var(--red);border-radius:18px;padding:15px 16px;margin:0 0 16px;
+  display:flex;align-items:center;gap:13px;width:100%;text-align:left;}
+.banner h4{font-family:var(--disp);font-size:16px;margin:0;letter-spacing:1px;text-transform:uppercase;}
+.banner p{font-family:var(--mono);font-size:11px;color:var(--muted);margin:3px 0 0;}
+
+.rayon{display:flex;justify-content:space-between;align-items:center;
+  font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:1.4px;
+  text-transform:uppercase;margin:18px 0 9px;padding-bottom:6px;
+  border-bottom:1px solid var(--line);}
+.rayon .cnt{letter-spacing:0;color:var(--cyan);}
+.sechead + .rayon{margin-top:2px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -201,20 +248,55 @@ ul.plain{margin:0;padding:0;list-style:none;}
 <script>
 const GROCERIES = [
   {
-    category: "Protéines",
+    category: "Viande",
+    icon: "🥩",
     items: [
-      { id: "p1", name: "Œufs", qty: "2 douzaines" },
       { id: "p2", name: "Blancs de poulet", qty: "1,5 kg" },
       { id: "p3", name: "Filets de dinde", qty: "500 g" },
-      { id: "p4", name: "Saumon", qty: "4 pavés" },
-      { id: "p5", name: "Poisson blanc (cabillaud/colin)", qty: "3 pavés" },
       { id: "p6", name: "Bœuf maigre 5%", qty: "500 g" },
-      { id: "p7", name: "Fromage blanc 0-3%", qty: "1 kg" },
-      { id: "p8", name: "Skyr nature", qty: "800 g" },
     ],
   },
   {
-    category: "Féculents",
+    category: "Poisson",
+    icon: "🐟",
+    items: [
+      { id: "p4", name: "Saumon", qty: "4 pavés" },
+      { id: "p5", name: "Poisson blanc (cabillaud/colin)", qty: "3 pavés" },
+    ],
+  },
+  {
+    category: "Œufs & laitages",
+    icon: "🥚",
+    items: [
+      { id: "p1", name: "Œufs", qty: "2 douzaines" },
+      { id: "p7", name: "Fromage blanc 0-3%", qty: "1 kg" },
+      { id: "p8", name: "Skyr nature", qty: "800 g" },
+      { id: "a5", name: "Fromage cheddar", qty: "100 g" },
+    ],
+  },
+  {
+    category: "Fruits",
+    icon: "🍌",
+    items: [
+      { id: "l1", name: "Bananes", qty: "7" },
+      { id: "l2", name: "Fruits rouges", qty: "500 g" },
+      { id: "l3", name: "Avocats", qty: "3" },
+    ],
+  },
+  {
+    category: "Légumes",
+    icon: "🥦",
+    items: [
+      { id: "l4", name: "Brocolis", qty: "2 têtes" },
+      { id: "l5", name: "Courgettes", qty: "4" },
+      { id: "l6", name: "Haricots verts", qty: "500 g" },
+      { id: "l7", name: "Salade", qty: "2 sachets" },
+      { id: "l8", name: "Légumes à rôtir", qty: "~1 kg" },
+    ],
+  },
+  {
+    category: "Féculents & céréales",
+    icon: "🌾",
     items: [
       { id: "f1", name: "Flocons d'avoine", qty: "700 g" },
       { id: "f2", name: "Riz complet", qty: "1 kg" },
@@ -225,25 +307,12 @@ const GROCERIES = [
     ],
   },
   {
-    category: "Fruits & légumes",
-    items: [
-      { id: "l1", name: "Bananes", qty: "7" },
-      { id: "l2", name: "Fruits rouges", qty: "500 g" },
-      { id: "l3", name: "Avocats", qty: "3" },
-      { id: "l4", name: "Brocolis", qty: "2 têtes" },
-      { id: "l5", name: "Courgettes", qty: "4" },
-      { id: "l6", name: "Haricots verts", qty: "500 g" },
-      { id: "l7", name: "Salade", qty: "2 sachets" },
-      { id: "l8", name: "Légumes à rôtir", qty: "~1 kg" },
-    ],
-  },
-  {
-    category: "Autres",
+    category: "Épicerie",
+    icon: "🫙",
     items: [
       { id: "a2", name: "Beurre de cacahuète", qty: "1 grand pot" },
       { id: "a3", name: "Huile d'olive", qty: "1 bouteille" },
       { id: "a4", name: "Miel", qty: "1 pot" },
-      { id: "a5", name: "Fromage cheddar", qty: "100 g" },
     ],
   },
 ];
@@ -510,7 +579,8 @@ const EXERCISE_GUIDE = [
 
 
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
-const START_WEIGHT = 82, GOAL_WEIGHT = 75, GOAL_LABEL = "fin septembre";
+
+
 
 const S = {
   get(k,d){ try{ const v=localStorage.getItem("c75:"+k); return v?JSON.parse(v):d; }catch(e){ return d; } },
@@ -521,9 +591,89 @@ let meals=S.get("meals",{}), workouts=S.get("workouts",{}), weights=S.get("weigh
 let list=S.get("list",null);
 if(list===null){
   list=[];
-  GROCERIES.forEach(c=>c.items.forEach(it=>list.push({id:it.id,n:it.name,q:it.qty,done:false})));
+  GROCERIES.forEach(c=>c.items.forEach(it=>list.push({id:it.id,n:it.name,q:it.qty,c:c.category,done:false})));
   S.set("list",list);
 }
+
+
+/* rayon d'un article (rétro-compatible avec les listes déjà enregistrées) */
+const CATS=GROCERIES.map(c=>c.category);
+const ICON_OF={}; GROCERIES.forEach(c=>ICON_OF[c.category]=c.icon);
+function catOf(it){
+  if(it.c&&CATS.includes(it.c)) return it.c;
+  let found="Divers";
+  GROCERIES.forEach(c=>c.items.forEach(x=>{ if(x.id===it.id) found=c.category; }));
+  return found;
+}
+
+/* ---------- PROFIL & CALCUL DES BESOINS ---------- */
+const DEF_PROFILE={sex:"H",age:null,height:174,start:82,weight:82,goal:75,rate:0.5,act:1.55};
+let P=Object.assign({},DEF_PROFILE,S.get("profile",{}));
+const ACTS=[
+  {v:1.2,  t:"Sédentaire",   d:"Bureau, peu de marche"},
+  {v:1.375,t:"Léger",        d:"1-3 séances / semaine"},
+  {v:1.55, t:"Modéré",       d:"3-5 séances, travail actif"},
+  {v:1.725,t:"Intense",      d:"6-7 séances / semaine"},
+  {v:1.9,  t:"Très intense", d:"Sport quotidien + métier physique"}
+];
+const RATES=[0.25,0.5,0.75,1];
+const profileOK=()=>!!(P.age&&P.height&&P.weight);
+
+/* poids sain minimum (IMC 18,5) et maximum (IMC 25) */
+const minHealthy=()=>+(18.5*Math.pow(P.height/100,2)).toFixed(1);
+const maxHealthy=()=>+(25*Math.pow(P.height/100,2)).toFixed(1);
+
+function calc(){
+  const w=P.weight, h=P.height, a=P.age;
+  if(!profileOK()) return null;
+  const bmr=Math.round(10*w+6.25*h-5*a+(P.sex==="H"?5:-161));
+  const tdee=Math.round(bmr*P.act);
+  const warns=[];
+
+  /* objectif borné à une fourchette de poids saine */
+  let goal=P.goal, lo=minHealthy();
+  if(goal<lo){ goal=lo; warns.push(`Objectif ramené à ${lo} kg : en dessous, tu passerais sous un IMC de 18,5, ce qui n'est pas un poids sain pour ta taille.`); }
+
+  const losing=goal<w;
+  let rate=Math.min(P.rate, losing?1:0.5);
+  const daily=Math.round(rate*7700/7);
+  let target=losing?tdee-daily:tdee+daily;
+
+  /* plancher de sécurité : jamais sous le métabolisme de base, ni sous 1500/1200 kcal */
+  const floor=Math.max(bmr, P.sex==="H"?1500:1200);
+  if(target<floor){
+    warns.push(`Calories relevées à ${floor} kcal : descendre plus bas t'exposerait à des carences, une fonte musculaire et une grosse fatigue.`);
+    target=floor;
+  }
+
+  const diff=Math.abs(w-goal);
+  const weeks=rate?Math.ceil(diff/rate):0;
+  const end=new Date(); end.setDate(end.getDate()+weeks*7);
+  const prot=Math.round(w*(losing?2.0:1.8));
+  const fat=Math.round(target*0.25/9);
+  const carb=Math.round((target-prot*4-fat*9)/4);
+
+  return {bmr,tdee,target,goal,rate,daily,losing,weeks,end,prot,fat,carb,warns,floor};
+}
+const dateFR=d=>d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+
+/* ---------- adaptation des portions ---------- */
+function baseKcal(d){ return MEALS[d].reduce((s,m)=>s+m.items.reduce((a,i)=>a+(i.k||0),0),0); }
+function ratio(d){
+  const c=calc(); if(!c) return 1;
+  return Math.max(0.55,Math.min(1.7, c.target/baseKcal(d)));
+}
+function scaleQ(q,r){
+  if(r===1||!q||/volonté|appétit|normale/i.test(q)) return q;
+  return q.replace(/\d+([.,]\d+)?/g,(m,_,off,str)=>{
+    const n=parseFloat(m.replace(",","."));
+    const after=q.slice(off+m.length,off+m.length+3);
+    const v=n*r;
+    if(/^\s*g/.test(after)) return v>=25?String(Math.round(v/5)*5):String(Math.round(v));
+    return String(Math.max(1,Math.round(v)));
+  });
+}
+const scaleK=(k,r)=>Math.round(k*r/5)*5;
 let tab=null, openDay=null, openEx=null;
 
 const DAYMAP=[6,0,1,2,3,4,5];
@@ -531,9 +681,9 @@ const TODAY=DAYS[DAYMAP[new Date().getDay()]];
 openDay=TODAY;
 
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const kcalOf=m=>m.items.reduce((s,i)=>s+(i.k||0),0);
-const dayKcal=d=>MEALS[d].reduce((s,m)=>s+kcalOf(m),0);
-const cw=()=>weights.length?weights[weights.length-1].weight:START_WEIGHT;
+const kcalOf=(m,r)=>m.items.reduce((s,i)=>s+scaleK(i.k||0,r===undefined?1:r),0);
+const dayKcal=d=>{ const r=ratio(d); return MEALS[d].reduce((s,m)=>s+kcalOf(m,r),0); };
+const cw=()=>weights.length?weights[weights.length-1].weight:P.weight;
 
 function pcts(){
   const g=list.length?Math.round(list.filter(x=>x.done).length/list.length*100):0;
@@ -568,18 +718,21 @@ const ICONS={
   repas:'<path d="M4 3v8a2 2 0 004 0V3M6 11v10"/><path d="M17 3c-1.5 2-2 4-2 6s.5 3 2 3 2-1 2-3-.5-4-2-6zM17 12v9"/>',
   sport:'<path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/>',
   poids:'<circle cx="12" cy="7" r="3.4"/><path d="M4 21V9a3 3 0 013-3h10a3 3 0 013 3v12z"/>',
-  guide:'<path d="M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4z"/><path d="M20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7z"/>'
+  guide:'<path d="M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4z"/><path d="M20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7z"/>',
+  profil:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>'
 };
 const TABS={
   courses:{t:"Courses",c:"var(--cyan)"}, repas:{t:"Repas",c:"var(--lime)"},
   sport:{t:"Sport",c:"var(--red)"}, poids:{t:"Poids",c:"var(--cyan)"},
-  guide:{t:"Guide",c:"var(--lime)"}
+  guide:{t:"Guide",c:"var(--lime)"}, profil:{t:"Profil",c:"var(--red)"}
 };
 
 function renderHome(){
-  const p=pcts(), w=cw(), togo=Math.max(0,+(w-GOAL_WEIGHT).toFixed(1));
+  const p=pcts(), w=cw(), gw=(calc()||{}).goal||P.goal, togo=Math.max(0,+(w-gw).toFixed(1));
   const nw=Object.values(workouts).filter(Boolean).length;
-  document.getElementById("tagline").textContent="82 → 75 kg · "+GOAL_LABEL;
+  const c=calc();
+  document.getElementById("tagline").textContent =
+    profileOK() ? `${w} → ${c.goal} kg · ${dateFR(c.end)}` : "Configure ton profil pour démarrer";
 
   const R=34, C=2*Math.PI*R;
   document.getElementById("dash").innerHTML=`
@@ -601,17 +754,29 @@ function renderHome(){
 
   const subs={courses:list.filter(x=>x.done).length+"/"+list.length+" articles", repas:p.m+"% suivi", sport:nw+"/7 séances",
     poids:weights.length?weights.length+" pesées":"Aucune pesée", guide:"22 exercices"};
+  const kc=c?c.target+" kcal/j":"À configurer";
   document.getElementById("menu").innerHTML=
+    (profileOK()?"":`<button class="banner" data-go="profil" style="grid-column:span 2">
+      <span class="ic" style="background:color-mix(in srgb,var(--red) 20%,transparent)">
+        <svg viewBox="0 0 24 24" style="stroke:var(--red)">${ICONS.profil}</svg></span>
+      <span><h4>Complète ton profil</h4>
+      <p>Âge, taille, objectif → calories sur mesure</p></span>
+      <span class="arrow" style="margin-left:auto">›</span></button>`) +
     ["courses","repas","sport","poids"].map(k=>`
       <button class="tile" data-go="${k}">
         <span class="ic" style="background:color-mix(in srgb,${TABS[k].c} 16%,transparent)">
           <svg viewBox="0 0 24 24" style="stroke:${TABS[k].c}">${ICONS[k]}</svg></span>
         <h3>${TABS[k].t}</h3><p>${subs[k]}</p><span class="arrow">›</span>
       </button>`).join("") + `
-      <button class="tile wide" data-go="guide">
+      <button class="tile" data-go="guide">
         <span class="ic" style="background:color-mix(in srgb,var(--lime) 16%,transparent)">
           <svg viewBox="0 0 24 24" style="stroke:var(--lime)">${ICONS.guide}</svg></span>
-        <span><h3>Guide</h3><p>${subs.guide}</p></span><span class="arrow">›</span>
+        <h3>Guide</h3><p>${subs.guide}</p><span class="arrow">›</span>
+      </button>
+      <button class="tile" data-go="profil">
+        <span class="ic" style="background:color-mix(in srgb,var(--red) 16%,transparent)">
+          <svg viewBox="0 0 24 24" style="stroke:var(--red)">${ICONS.profil}</svg></span>
+        <h3>Profil</h3><p>${kc}</p><span class="arrow">›</span>
       </button>`;
 }
 
@@ -624,23 +789,30 @@ function vCourses(){
     <input id="gIn" type="text" placeholder="Ajouter un article…" autocomplete="off">
     <button class="addb" id="gAdd">+</button></div>`;
 
-  /* --- ma liste --- */
-  h+=`<div class="sechead"><h3>Ma liste</h3>
-    <span>${done}/${list.length} pris</span></div>`;
+  /* --- ma liste, groupée par rayon --- */
+  h+=`<div class="sechead"><h3>Ma liste</h3><span>${done}/${list.length} pris</span></div>`;
   if(!list.length){
     h+=`<div class="empty">Ta liste est vide.<br>Pioche dans les suggestions ci-dessous
       ou ajoute un article.</div>`;
   }else{
-    h+=`<div class="chips">`;
-    list.forEach(it=>{
-      h+=`<span class="chip ${it.done?'on':''}">
-        <span class="tick" data-tog="${esc(it.id)}"></span>
-        <span data-tog="${esc(it.id)}"><span class="cn">${esc(it.n)}</span>
-        ${it.q?`<span class="cq">${esc(it.q)}</span>`:''}</span>
-        <button class="x" data-rm="${esc(it.id)}" aria-label="Retirer">✕</button></span>`;
+    const groups={};
+    list.forEach(it=>{ const c=catOf(it); (groups[c]=groups[c]||[]).push(it); });
+    const order=CATS.concat(Object.keys(groups).filter(c=>!CATS.includes(c)));
+    order.forEach(cat=>{
+      const items=groups[cat]; if(!items||!items.length) return;
+      const nd=items.filter(x=>x.done).length;
+      h+=`<div class="rayon"><span>${ICON_OF[cat]||"🛒"} ${esc(cat)}</span>
+        <span class="cnt">${nd}/${items.length}</span></div><div class="chips">`;
+      items.forEach(it=>{
+        h+=`<span class="chip ${it.done?'on':''}">
+          <span class="tick" data-tog="${esc(it.id)}"></span>
+          <span data-tog="${esc(it.id)}"><span class="cn">${esc(it.n)}</span>
+          ${it.q?`<span class="cq">${esc(it.q)}</span>`:''}</span>
+          <button class="x" data-rm="${esc(it.id)}" aria-label="Retirer">✕</button></span>`;
+      });
+      h+=`</div>`;
     });
-    h+=`</div>`;
-    if(done) h+=`<div style="margin-top:13px;display:flex;gap:9px;flex-wrap:wrap">
+    if(done) h+=`<div style="margin-top:15px;display:flex;gap:9px;flex-wrap:wrap">
       <button class="mini" id="gClear">Retirer les ${done} pris</button>
       <button class="mini" id="gUncheck">Tout décocher</button></div>`;
   }
@@ -648,7 +820,7 @@ function vCourses(){
   /* --- catalogue --- */
   h+=`<div class="sechead"><h3>Suggestions</h3><span>Touche pour ajouter</span></div>`;
   GROCERIES.forEach(c=>{
-    h+=`<div class="catname">${esc(c.category)}</div><div class="chips">`;
+    h+=`<div class="rayon"><span>${c.icon} ${esc(c.category)}</span></div><div class="chips">`;
     c.items.forEach(it=>{
       const already=inList.has(it.id);
       h+=`<button class="chip add ${already?'in':''}" data-add="${it.id}">
@@ -658,33 +830,34 @@ function vCourses(){
     });
     h+=`</div>`;
   });
-  h+=`<div style="margin-top:20px"><button class="mini" id="gReset">
+  h+=`<div style="margin-top:22px"><button class="mini" id="gReset">
     Recharger la liste complète du plan</button></div>`;
   return h;
 }
 
 function vRepas(){
-  let h=`<p class="note">Poids à peser cru, avant cuisson. Calories estimées.</p>`;
+  const c=calc();
+  let h=`<p class="note">Poids à peser cru, avant cuisson.${c?` Portions calées sur ton objectif de <b style="color:var(--lime)">${c.target} kcal/jour</b>.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
   DAYS.forEach(d=>{
-    const op=openDay===d, td=d===TODAY;
+    const op=openDay===d, td=d===TODAY, r=ratio(d), tot=dayKcal(d);
     h+=`<div class="card"><div class="chead ${td?'now':''}" data-day="${d}">
       <span>${d}${td?" · aujourd'hui":""}</span>
-      <span class="between" style="gap:8px"><span class="kcal">${dayKcal(d)} kcal</span>
+      <span class="between" style="gap:8px"><span class="kcal">${tot} kcal</span>
       <span class="pl">${op?'–':'+'}</span></span></div>`;
     if(op){
       MEALS[d].forEach((m,i)=>{
         const k=d+"-"+i, on=meals[k];
         h+=`<div class="row" data-m="${k}"><span class="box ${on?'on':''}"></span><span class="grow">
           <span class="between" style="margin-bottom:5px"><span class="mtype">${esc(m.type)}</span>
-          <span class="kcal">~${kcalOf(m)} kcal</span></span>`;
+          <span class="kcal">~${kcalOf(m,r)} kcal</span></span>`;
         m.items.forEach(g=>{
           h+=`<span class="between" style="margin-top:2px"><span class="nm ${on?'done':''}">${esc(g.n)}</span>
-            <span class="between" style="gap:9px"><span class="qty">${esc(g.q)}</span>
-            <span class="kcal">${g.k}</span></span></span>`;
+            <span class="between" style="gap:9px"><span class="qty">${esc(scaleQ(g.q,r))}</span>
+            <span class="kcal">${scaleK(g.k,r)}</span></span></span>`;
         });
         h+=`</span></div>`;
       });
-      h+=`<div class="total"><span>Total du jour</span><span>~${dayKcal(d)} kcal</span></div>`;
+      h+=`<div class="total"><span>Total du jour</span><span>~${tot} kcal</span></div>`;
     }
     h+=`</div>`;
   });
@@ -714,8 +887,9 @@ function vSport(){
 
 function chartSVG(){
   const W=320,H=180,pad={l:32,r:12,t:14,b:24};
-  const pts=[{d:"Départ",w:START_WEIGHT}].concat(weights.map(x=>({d:x.date.slice(5),w:x.weight})));
-  const mx=Math.max(START_WEIGHT+1,...pts.map(p=>p.w)), mn=Math.min(GOAL_WEIGHT-1,...pts.map(p=>p.w));
+  const pts=[{d:"Départ",w:P.start}].concat(weights.map(x=>({d:x.date.slice(5),w:x.weight})));
+  const G=(calc()||{}).goal||P.goal;
+  const mx=Math.max(P.start+1,...pts.map(p=>p.w)), mn=Math.min(G-1,...pts.map(p=>p.w));
   const X=i=>pad.l+(pts.length<2?0:i*(W-pad.l-pad.r)/(pts.length-1));
   const Y=v=>pad.t+(mx-v)/(mx-mn||1)*(H-pad.t-pad.b);
   let g="";
@@ -723,10 +897,10 @@ function chartSVG(){
     g+=`<line x1="${pad.l}" y1="${Y(v)}" x2="${W-pad.r}" y2="${Y(v)}" stroke="#2E2559"/>
         <text x="3" y="${Y(v)+4}" font-size="9" fill="#9A93C4" font-family="monospace">${v.toFixed(0)}</text>`;
   });
-  g+=`<line x1="${pad.l}" y1="${Y(GOAL_WEIGHT)}" x2="${W-pad.r}" y2="${Y(GOAL_WEIGHT)}"
+  g+=`<line x1="${pad.l}" y1="${Y(G)}" x2="${W-pad.r}" y2="${Y(G)}"
       stroke="#B8FF3C" stroke-dasharray="5 4"/>
-      <text x="${W-pad.r}" y="${Y(GOAL_WEIGHT)-5}" font-size="9" fill="#B8FF3C"
-      text-anchor="end" font-family="monospace">OBJECTIF 75</text>`;
+      <text x="${W-pad.r}" y="${Y(G)-5}" font-size="9" fill="#B8FF3C"
+      text-anchor="end" font-family="monospace">OBJECTIF ${G}</text>`;
   if(pts.length>1)
     g+=`<polyline fill="none" stroke="#FF2E55" stroke-width="2.6" stroke-linejoin="round"
         stroke-linecap="round" points="${pts.map((p,i)=>X(i)+","+Y(p.w)).join(" ")}"/>`;
@@ -740,7 +914,7 @@ function chartSVG(){
 }
 
 function vPoids(){
-  const w=cw(), togo=Math.max(0,+(w-GOAL_WEIGHT).toFixed(1));
+  const w=cw(), G=(calc()||{}).goal||P.goal, togo=Math.max(0,+(w-G).toFixed(1));
   let h=`<p class="note">Pèse-toi le matin à jeun, toujours dans les mêmes conditions.</p>
   <div class="wbar"><input id="wIn" type="text" inputmode="decimal" placeholder="Pesée du jour">
   <button class="addb" id="wAdd">OK</button></div>
@@ -777,8 +951,72 @@ function vGuide(){
   return h;
 }
 
+function vProfil(){
+  const c=calc();
+  let h=`<p class="note">Ces informations servent à calculer tes besoins et à adapter
+    automatiquement les portions de chaque repas.</p>`;
+
+  h+=`<div class="field"><label>Sexe</label><div class="seg">
+    ${["H","F"].map(x=>`<button data-set="sex" data-val="${x}" class="${P.sex===x?'on':''}">
+      ${x==="H"?"Homme":"Femme"}</button>`).join("")}</div></div>
+
+  <div class="field"><label>Âge</label>
+    <input id="fAge" type="text" inputmode="numeric" placeholder="ex : 30"
+      value="${P.age||""}"></div>
+
+  <div class="field"><label>Taille (cm)</label>
+    <input id="fH" type="text" inputmode="numeric" placeholder="ex : 174" value="${P.height||""}"></div>
+
+  <div class="field"><label>Poids actuel (kg)</label>
+    <input id="fW" type="text" inputmode="decimal" placeholder="ex : 82" value="${P.weight||""}"></div>
+
+  <div class="field"><label>Poids visé (kg)</label>
+    <input id="fG" type="text" inputmode="decimal" placeholder="ex : 75" value="${P.goal||""}"></div>
+
+  <div class="field"><label>Rythme souhaité</label><div class="seg">
+    ${RATES.map(r=>`<button data-set="rate" data-val="${r}" class="${P.rate===r?'on':''}">
+      ${String(r).replace(".",",")} kg<span class="sub">/ sem</span></button>`).join("")}</div></div>
+
+  <div class="field"><label>Niveau d'activité</label><div class="seg col">
+    ${ACTS.map(a=>`<button data-set="act" data-val="${a.v}" class="${P.act===a.v?'on':''}">
+      ${a.t}<span class="sub">${a.d}</span></button>`).join("")}</div></div>
+
+  <div class="savebar"><button class="save" id="pSave">Enregistrer</button></div>`;
+
+  if(c){
+    h+=`<div class="sechead"><h3>Tes besoins</h3><span>Calculés</span></div>`;
+    c.warns.forEach(w=>{ h+=`<div class="warn"><b>À noter —</b> ${esc(w)}</div>`; });
+    h+=`<div class="res">
+      <p class="lbl">Objectif quotidien</p>
+      <div class="big">${c.target}<small> kcal</small></div>
+      <hr>
+      <div class="kv"><span>Métabolisme de base</span><span>${c.bmr} kcal</span></div>
+      <div class="kv"><span>Dépense totale estimée</span><span>${c.tdee} kcal</span></div>
+      <div class="kv"><span>${c.losing?"Déficit":"Surplus"} quotidien</span>
+        <span style="color:var(--red)">${c.losing?"−":"+"}${Math.abs(c.tdee-c.target)} kcal</span></div>
+      <hr>
+      <div class="kv"><span>Protéines</span><span style="color:var(--cyan)">${c.prot} g</span></div>
+      <div class="kv"><span>Glucides</span><span style="color:var(--cyan)">${c.carb} g</span></div>
+      <div class="kv"><span>Lipides</span><span style="color:var(--cyan)">${c.fat} g</span></div>
+      <hr>
+      <div class="kv"><span>Objectif retenu</span><span>${c.goal} kg</span></div>
+      <div class="kv"><span>Durée estimée</span><span>${c.weeks} semaines</span></div>
+      <div class="kv"><span>Échéance</span><span>${dateFR(c.end)}</span></div>
+    </div>
+    <div class="info">Fourchette de poids saine pour ${P.height} cm :
+      <b style="color:var(--lime)">${minHealthy()} – ${maxHealthy()} kg</b> (IMC 18,5 à 25).<br><br>
+      Ces chiffres sont des estimations statistiques, pas une prescription. Ton métabolisme réel
+      peut varier de 10 %. Ajuste selon ce que dit la balance après 2-3 semaines, et parles-en
+      à un médecin ou un diététicien avant tout changement important.</div>`;
+  }else{
+    h+=`<div class="info">Renseigne au minimum ton âge, ta taille et ton poids
+      pour obtenir tes besoins caloriques.</div>`;
+  }
+  return h;
+}
+
 /* ---- navigation ---- */
-const VIEWS={courses:vCourses,repas:vRepas,sport:vSport,poids:vPoids,guide:vGuide};
+const VIEWS={courses:vCourses,repas:vRepas,sport:vSport,poids:vPoids,guide:vGuide,profil:vProfil};
 const home=document.getElementById("home"), page=document.getElementById("page");
 
 function go(k){
@@ -799,7 +1037,7 @@ function goHome(){
 function refresh(){ if(tab) go(tab); else renderHome(); }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],#back,#wAdd,#gAdd,#gClear,#gUncheck,#gReset");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset");
   if(!t) return;
   if(t.id==="back") return goHome();
   if(t.dataset.go) return go(t.dataset.go);
@@ -810,21 +1048,43 @@ document.addEventListener("click",e=>{
     if(list.some(x=>x.id===t.dataset.add)) return;
     let src=null;
     GROCERIES.forEach(c=>c.items.forEach(i=>{ if(i.id===t.dataset.add) src=i; }));
-    if(src){ list.push({id:src.id,n:src.name,q:src.qty,done:false}); S.set("list",list); }
+    if(src){ let cat="Divers"; GROCERIES.forEach(c=>c.items.forEach(i=>{ if(i.id===src.id) cat=c.category; }));
+      list.push({id:src.id,n:src.name,q:src.qty,c:cat,done:false}); S.set("list",list); }
     return refresh();
   }
   if(t.id==="gClear"){ list=list.filter(x=>!x.done); S.set("list",list); return refresh(); }
   if(t.id==="gUncheck"){ list.forEach(x=>x.done=false); S.set("list",list); return refresh(); }
   if(t.id==="gReset"){
     GROCERIES.forEach(c=>c.items.forEach(i=>{
-      if(!list.some(x=>x.id===i.id)) list.push({id:i.id,n:i.name,q:i.qty,done:false});
+      if(!list.some(x=>x.id===i.id)) list.push({id:i.id,n:i.name,q:i.qty,c:c.category,done:false});
     }));
     S.set("list",list); return refresh();
+  }
+  if(t.dataset.set){
+    const v=t.dataset.val;
+    P[t.dataset.set]= t.dataset.set==="sex" ? v : parseFloat(v);
+    S.set("profile",P); return refresh();
+  }
+  if(t.id==="pSave"){
+    const num=id=>{ const el=document.getElementById(id);
+      const v=parseFloat((el?el.value:"").replace(",",".")); return isNaN(v)?null:v; };
+    const age=num("fAge"), hh=num("fH"), ww=num("fW"), gg=num("fG");
+    if(age!==null) P.age=Math.min(100,Math.max(14,Math.round(age)));
+    if(hh!==null)  P.height=Math.min(230,Math.max(120,Math.round(hh)));
+    if(ww!==null){ if(!weights.length) P.start=ww; P.weight=ww; }
+    if(gg!==null)  P.goal=gg;
+    S.set("profile",P);
+    const btn=document.getElementById("pSave");
+    refresh();
+    const nb=document.getElementById("pSave");
+    if(nb){ nb.textContent="Enregistré ✓"; setTimeout(()=>{ if(document.getElementById("pSave"))
+      document.getElementById("pSave").textContent="Enregistrer"; },1600); }
+    return;
   }
   if(t.id==="gAdd"){
     const el=document.getElementById("gIn"); const v=(el.value||"").trim();
     if(!v) return;
-    list.push({id:"u"+Date.now(),n:v,q:"",done:false});
+    list.push({id:"u"+Date.now(),n:v,q:"",c:"Divers",done:false});
     S.set("list",list); el.value=""; return refresh();
   }
   if(t.dataset.m){ meals[t.dataset.m]=!meals[t.dataset.m]; S.set("meals",meals); return refresh(); }
@@ -836,7 +1096,7 @@ document.addEventListener("click",e=>{
     if(!v||v<40||v>200) return;
     const date=new Date().toISOString().slice(0,10);
     weights=weights.filter(x=>x.date!==date).concat([{date,weight:v}]).sort((a,b)=>a.date.localeCompare(b.date));
-    S.set("weights",weights); return refresh();
+    S.set("weights",weights); P.weight=v; S.set("profile",P); return refresh();
   }
 });
 document.addEventListener("keydown",e=>{
