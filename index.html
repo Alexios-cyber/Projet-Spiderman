@@ -325,6 +325,8 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .wk-d.now em{color:var(--brand);font-weight:500;}
 .wk-d.now .wk-bar{outline:1.5px solid var(--brand);outline-offset:1.5px;}
 .wk-d:active{transform:scale(.93);}
+.ver{text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);
+  opacity:.6;margin:20px 0 0;letter-spacing:.5px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -340,6 +342,7 @@ ul.plain{margin:0;padding:0;list-style:none;}
   <div class="dash" id="dash"></div>
   <div class="week" id="week"></div>
   <div class="menu" id="menu"></div>
+  <p class="ver" id="ver"></p>
 </div>
 
 <div id="page">
@@ -686,6 +689,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
+const APP_VERSION="19";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -1396,6 +1400,8 @@ function renderHome(){
       }).join("")}
     </div>
     <div class="wk-line" style="--p:${Math.min(100,Math.round(tgt/top*100))}%"></div>`;
+  document.getElementById("ver").textContent=
+    `Vertigo v${APP_VERSION} · ${FOOD.length} aliments`;
   document.getElementById("menu").innerHTML=
     (profileOK()?"":`<button class="banner" data-go="profil" style="grid-column:span 2">
       <span class="ic" style="background:color-mix(in srgb,var(--red) 20%,transparent)">

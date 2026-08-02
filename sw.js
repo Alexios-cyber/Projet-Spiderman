@@ -1,5 +1,4 @@
 const CACHE = "vertigo-v19";
-const RUNTIME = "vertigo-runtime";
 const FILES = [
   "./",
   "./index.html",
@@ -18,26 +17,39 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE && k !== RUNTIME).map(k => caches.delete(k))
-      ))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  e.respondWith(
-    caches.match(e.request).then(hit => {
-      if (hit) return hit;
-      return fetch(e.request).then(res => {
-        // met en cache les polices Google et autres ressources externes
-        if (res && (res.ok || res.type === "opaque")) {
+  const url = new URL(e.request.url);
+  const isApp = e.request.mode === "navigate" || url.pathname.endsWith("index.html");
+
+  // L'application : on va chercher la dernière version en ligne d'abord,
+  // et on retombe sur le cache seulement si le réseau ne répond pas.
+  if (isApp) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
           const copy = res.clone();
-          caches.open(RUNTIME).then(c => c.put(e.request, copy)).catch(() => {});
-        }
-        return res;
-      }).catch(() => caches.match("./index.html"));
-    })
+          caches.open(CACHE).then(c => c.put("./index.html", copy)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match("./index.html").then(r => r || caches.match("./")))
+    );
+    return;
+  }
+
+  // Le reste (icônes, polices) : cache d'abord, c'est stable.
+  e.respondWith(
+    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+      if (res && (res.ok || res.type === "opaque")) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => caches.match("./index.html")))
   );
 });
