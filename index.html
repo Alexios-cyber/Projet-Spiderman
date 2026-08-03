@@ -342,6 +342,22 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .eaten{background:color-mix(in srgb,var(--cyan) 10%,var(--surf));
   border-top:1px solid var(--line);padding:11px 15px;font-size:12.5px;line-height:1.55;}
 .eaten b{color:var(--cyan);font-family:var(--mono);}
+
+.rline{display:flex;align-items:center;gap:10px;padding:12px 15px;
+  border-top:1px solid var(--line);}
+.rline:first-of-type{border-top:none;}
+.rline b{font-size:14px;font-weight:600;}
+.rline em{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);
+  font-style:normal;margin-top:2px;}
+.rline.on{background:color-mix(in srgb,var(--brand) 9%,transparent);
+  box-shadow:inset 3px 0 0 var(--brand);}
+.rline.on b{color:var(--brand);}
+.rline:active{background:var(--surf2);}
+.rline.goal{background:color-mix(in srgb,var(--lime) 11%,transparent);}
+.rline.goal b{color:var(--lime);}
+.ms-dot{width:9px;height:9px;border-radius:50%;background:var(--line);
+  border:2px solid var(--muted);flex-shrink:0;}
+.ms-dot.g{background:var(--lime);border-color:var(--lime);}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -704,7 +720,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
-const APP_VERSION="25";
+const APP_VERSION="27";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -1294,7 +1310,7 @@ const profileOK=()=>!!(P.age&&P.height&&P.weight);
 const minHealthy=()=>+(18.5*Math.pow(P.height/100,2)).toFixed(1);
 const maxHealthy=()=>+(25*Math.pow(P.height/100,2)).toFixed(1);
 
-function calc(){
+function calc(rOv){
   const w=P.weight, h=P.height, a=P.age;
   if(!profileOK()) return null;
   const bmr=Math.round(10*w+6.25*h-5*a+(P.sex==="H"?5:-161));
@@ -1306,7 +1322,7 @@ function calc(){
   if(goal<lo){ goal=lo; warns.push(`Objectif ramené à ${lo} kg : en dessous, tu passerais sous un IMC de 18,5, ce qui n'est pas un poids sain pour ta taille.`); }
 
   const losing=goal<w;
-  let rate=Math.min(P.rate, losing?1:0.5);
+  let rate=Math.min(rOv===undefined?P.rate:rOv, losing?1:0.5);
   const daily=Math.round(rate*7700/7);
   let target=losing?tdee-daily:tdee+daily;
 
@@ -1404,8 +1420,12 @@ function renderHome(){
   const p=pcts(), w=cw(), gw=(calc()||{}).goal||P.goal, togo=Math.max(0,+(w-gw).toFixed(1));
   const nw=Object.values(workouts).filter(Boolean).length;
   const c=calc();
-  document.getElementById("tagline").textContent =
-    profileOK() ? `${w} → ${c.goal} kg · ${dateFR(c.end)}` : "Configure ton profil pour démarrer";
+  const pj=profileOK()?projection():null;
+  document.getElementById("tagline").textContent = !profileOK()
+    ? "Configure ton profil pour démarrer"
+    : pj&&pj.done ? `${w} kg · objectif atteint`
+    : pj&&pj.date ? `${w} → ${c.goal} kg · ${dateFR(pj.date)}`
+    : `${w} → ${c.goal} kg`;
 
   const R=34, C=2*Math.PI*R;
   document.getElementById("dash").innerHTML=`
@@ -1710,31 +1730,111 @@ function vSport(){
 }
 
 function chartSVG(){
-  const W=320,H=180,pad={l:32,r:12,t:14,b:24};
-  const pts=[{d:"Départ",w:P.start}].concat(weights.map(x=>({d:x.date.slice(5),w:x.weight})));
-  const G=(calc()||{}).goal||P.goal;
-  const mx=Math.max(P.start+1,...pts.map(p=>p.w)), mn=Math.min(G-1,...pts.map(p=>p.w));
-  const X=i=>pad.l+(pts.length<2?0:i*(W-pad.l-pad.r)/(pts.length-1));
+  const W=320,H=190,pad={l:32,r:14,t:14,b:26};
+  const G=(calc()||{}).goal||P.goal, pj=projection();
+  const now=Date.now();
+  const pts=weights.map(x=>({t:toTs(x.date),w:x.weight}));
+  if(!pts.length) pts.push({t:now,w:P.start});
+  const t0=pts[0].t;
+  const tEnd=(pj&&pj.date)?pj.date.getTime():Math.max(now,t0)+56*dayMs;
+  const span=Math.max(dayMs*7,tEnd-t0);
+  const ws=pts.map(p=>p.w).concat([G,P.start]);
+  const mx=Math.max(...ws)+0.8, mn=Math.min(...ws)-0.8;
+  const X=t=>pad.l+(t-t0)/span*(W-pad.l-pad.r);
   const Y=v=>pad.t+(mx-v)/(mx-mn||1)*(H-pad.t-pad.b);
   let g="";
   [mn,(mn+mx)/2,mx].forEach(v=>{
     g+=`<line x1="${pad.l}" y1="${Y(v)}" x2="${W-pad.r}" y2="${Y(v)}" stroke="#E4E1F0"/>
         <text x="3" y="${Y(v)+4}" font-size="9" fill="#837D97" font-family="monospace">${v.toFixed(0)}</text>`;
   });
+  /* ligne d'objectif */
   g+=`<line x1="${pad.l}" y1="${Y(G)}" x2="${W-pad.r}" y2="${Y(G)}"
       stroke="#8AA86B" stroke-dasharray="5 4"/>
       <text x="${W-pad.r}" y="${Y(G)-5}" font-size="9" fill="#8AA86B"
       text-anchor="end" font-family="monospace">OBJECTIF ${G}</text>`;
+  /* trajectoire prévue jusqu'à l'objectif */
+  if(pj&&pj.date){
+    const last=pts[pts.length-1];
+    g+=`<line x1="${X(last.t)}" y1="${Y(last.w)}" x2="${X(tEnd)}" y2="${Y(G)}"
+        stroke="#5B54B8" stroke-width="2" stroke-dasharray="4 4" opacity=".55"/>
+        <circle cx="${X(tEnd)}" cy="${Y(G)}" r="4" fill="none" stroke="#5B54B8" stroke-width="2"/>`;
+  }
+  /* pesées réelles */
   if(pts.length>1)
     g+=`<polyline fill="none" stroke="#D97583" stroke-width="2.6" stroke-linejoin="round"
-        stroke-linecap="round" points="${pts.map((p,i)=>X(i)+","+Y(p.w)).join(" ")}"/>`;
-  pts.forEach((p,i)=>{
-    g+=`<circle cx="${X(i)}" cy="${Y(p.w)}" r="3.6" fill="#D97583"/>`;
-    if(i===0||i===pts.length-1)
-      g+=`<text x="${X(i)}" y="${H-7}" font-size="9" fill="#837D97" text-anchor="middle"
-          font-family="monospace">${esc(p.d)}</text>`;
+        stroke-linecap="round" points="${pts.map(p=>X(p.t)+","+Y(p.w)).join(" ")}"/>`;
+  pts.forEach(p=>{ g+=`<circle cx="${X(p.t)}" cy="${Y(p.w)}" r="3.6" fill="#D97583"/>`; });
+  const fmt=t=>new Date(t).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
+  g+=`<text x="${pad.l}" y="${H-7}" font-size="9" fill="#837D97" font-family="monospace">${fmt(t0)}</text>
+      <text x="${W-pad.r}" y="${H-7}" font-size="9" fill="#837D97" text-anchor="end"
+      font-family="monospace">${fmt(tEnd)}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="190">${g}</svg>`;
+}
+
+function projCard(){
+  const pj=projection();
+  if(!pj) return `<div class="info">Complète ton profil pour estimer la date d'arrivée.</div>`;
+  if(pj.done) return `<div class="res"><p class="lbl">Objectif</p>
+    <div class="big" style="color:var(--ok)">Atteint !</div>
+    <hr><div class="kv"><span>Poids visé</span><span>${pj.goal} kg</span></div></div>`;
+  if(pj.stuck) return `<div class="res">
+    <p class="lbl">Estimation impossible</p>
+    <div class="big" style="font-size:24px;color:var(--red)">Courbe à contre-sens</div>
+    <hr><div class="kv"><span>Rythme observé</span>
+      <span style="color:var(--red)">${pj.real?kgW(pj.real.rate):"–"}</span></div>
+    <div class="kv"><span>Rythme visé</span><span>${kgW(pj.planned)}</span></div>
+    </div><div class="info">Tes dernières pesées vont dans l'autre sens.
+    Laisse passer une ou deux semaines : le poids fluctue beaucoup au jour le jour
+    (eau, sel, digestion). Si la tendance se confirme, revois ton objectif calorique.</div>`;
+
+  const m=Math.round(pj.weeks/4.345*10)/10;
+  return `<div class="res">
+    <p class="lbl">Objectif atteint le</p>
+    <div class="big" style="font-size:26px;line-height:1.15">${dateLong(pj.date)}</div>
+    <p class="lbl" style="margin-top:8px">dans ${pj.weeks} semaine${pj.weeks>1?"s":""}
+      ${m>=1.5?`· environ ${String(m).replace(".",",")} mois`:""}</p>
+    <hr>
+    <div class="kv"><span>Il te reste</span>
+      <span style="color:var(--red)">${Math.abs(pj.need).toFixed(1).replace(".",",")} kg</span></div>
+    <div class="kv"><span>Rythme visé</span><span>${kgW(pj.planned)}</span></div>
+    ${pj.real?`<div class="kv"><span>Rythme observé</span>
+      <span style="color:${pj.usingReal?"var(--lime)":"var(--muted)"}">${kgW(pj.real.rate)}</span></div>
+      <div class="kv"><span>Sur</span><span>${pj.real.n} pesées / ${pj.real.span} jours</span></div>`:""}
+  </div>
+  <div class="info">${pj.usingReal
+    ? `Cette date se base sur <b>ton rythme réel</b> (${kgW(pj.real.rate)}), pas sur le rythme théorique.
+       ${Math.abs(pj.real.rate)>Math.abs(pj.planned)*1.15
+         ? "Tu vas plus vite que prévu — attention à ne pas creuser trop le déficit."
+         : Math.abs(pj.real.rate)<Math.abs(pj.planned)*0.85
+           ? "Tu avances un peu moins vite que prévu, c'est fréquent et sans gravité."
+           : "Tu es pile dans le rythme."}`
+    : pj.real
+      ? ((pj.need<0&&pj.real.rate>0.05)||(pj.need>0&&pj.real.rate<-0.05)
+          ? `<b style="color:var(--red)">Attention :</b> sur tes ${pj.real.n} dernières pesées le poids
+             va dans l'autre sens (${kgW(pj.real.rate)}). La date affichée reste théorique.
+             Si ça dure plus de deux semaines, vérifie tes portions ou revois ton objectif calorique.`
+          : `Estimation basée sur le rythme théorique : tes pesées ne montrent pas encore de tendance nette.`)
+      : `Estimation basée sur le rythme théorique. Pèse-toi régulièrement (au moins 2 fois
+         sur 7 jours) pour que l'app calcule ta vraie vitesse.`}
+    <br><br>Le poids varie de 1 à 2 kg d'un jour à l'autre : c'est la tendance sur plusieurs
+    semaines qui compte, pas la pesée du matin.</div>`;
+}
+
+function milestoneCard(){
+  const ms=milestones();
+  if(!ms.length) return "";
+  const pj=projection();
+  let h=`<div class="sechead"><h3>Étapes</h3>
+    <span>${pj.usingReal?"rythme réel":"rythme visé"}</span></div>
+    <div class="card">`;
+  ms.forEach((m,i)=>{
+    h+=`<div class="rline ${m.goal?'goal':''}">
+      <span class="ms-dot ${m.goal?'g':''}"></span>
+      <span style="flex:1"><b>${String(m.w).replace(".",",")} kg</b>
+        ${m.goal?'<em>objectif</em>':''}</span>
+      <span class="qty">${dateShort(m.date)}</span></div>`;
   });
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="180">${g}</svg>`;
+  return h+`</div>`;
 }
 
 function vPoids(){
@@ -1743,6 +1843,8 @@ function vPoids(){
   <div class="wbar"><input id="wIn" type="text" inputmode="decimal" placeholder="Pesée du jour">
   <button class="addb" id="wAdd">OK</button></div>
   <div class="chart">${chartSVG()}</div>
+  ${projCard()}
+  ${milestoneCard()}
   <div class="duo"><div class="stat"><b style="color:var(--cyan)">${w} kg</b><span>Actuel</span></div>
   <div class="stat"><b style="color:var(--red)">${togo} kg</b><span>Reste</span></div></div>`;
   if(weights.length){
@@ -1798,8 +1900,11 @@ function vProfil(){
     <input id="fG" type="text" inputmode="decimal" placeholder="ex : 75" value="${P.goal||""}"></div>
 
   <div class="field"><label>Rythme souhaité</label><div class="seg">
-    ${RATES.map(r=>`<button data-set="rate" data-val="${r}" class="${P.rate===r?'on':''}">
-      ${String(r).replace(".",",")} kg<span class="sub">/ sem</span></button>`).join("")}</div></div>
+    ${RATES.map(r=>{
+      const t=rateTable().find(x=>x.r===r);
+      return `<button data-set="rate" data-val="${r}" class="${P.rate===r?'on':''}">
+        ${String(r).replace(".",",")} kg<span class="sub">${t?dateShort(t.date):"/ sem"}</span></button>`;
+    }).join("")}</div></div>
 
   <div class="field"><label>Niveau d'activité</label><div class="seg col">
     ${ACTS.map(a=>`<button data-set="act" data-val="${a.v}" class="${P.act===a.v?'on':''}">
@@ -1808,6 +1913,25 @@ function vProfil(){
   <div class="savebar"><button class="save" id="pSave">Enregistrer</button></div>`;
 
   if(c){
+    const tb=rateTable();
+    if(tb.length){
+      h+=`<div class="sechead"><h3>Comparer les rythmes</h3><span>touche pour choisir</span></div>
+        <p class="note">Même objectif de ${c.goal} kg, quatre vitesses possibles.</p>
+        <div class="card"><div class="chead">
+          <span style="flex:1">Rythme</span><span style="flex:1;text-align:center">Arrivée</span>
+          <span style="flex:.7;text-align:right">kcal/j</span></div>`;
+      tb.forEach(t=>{
+        const on=P.rate===t.r;
+        h+=`<div class="rline ${on?'on':''}" data-set="rate" data-val="${t.r}">
+          <span style="flex:1"><b>${String(t.r).replace(".",",")} kg/sem</b>
+            <em>${t.weeks} sem.</em></span>
+          <span style="flex:1;text-align:center" class="qty">${dateShort(t.date)}</span>
+          <span style="flex:.7;text-align:right" class="kcal">${t.target}${t.floored?" ⚠":""}</span></div>`;
+      });
+      h+=`</div>`;
+      if(tb.some(t=>t.floored)) h+=`<div class="info">⚠ À ce rythme, les calories touchent
+        le plancher de sécurité : la date affichée ne serait pas tenue sans risque.</div>`;
+    }
     h+=`<div class="sechead"><h3>Tes besoins</h3><span>Calculés</span></div>`;
     c.warns.forEach(w=>{ h+=`<div class="warn"><b>À noter —</b> ${esc(w)}</div>`; });
     h+=`<div class="res">
@@ -2102,6 +2226,75 @@ function buildSuggestions(T0){
   return out.slice(0,4);
 }
 
+
+/* ---------- PROJECTION : QUAND L'OBJECTIF SERA-T-IL ATTEINT ? ---------- */
+const dayMs=86400000;
+const toTs=d=>new Date(d+"T12:00:00").getTime();
+/* rythme réellement observé sur les pesées (kg / semaine, négatif = perte) */
+function realRate(){
+  if(weights.length<2) return null;
+  const t0=toTs(weights[0].date);
+  const p=weights.map(x=>({d:(toTs(x.date)-t0)/dayMs,w:x.weight}));
+  const span=p[p.length-1].d-p[0].d;
+  if(span<7) return null;                       // moins d'une semaine : pas fiable
+  const n=p.length;
+  const sx=p.reduce((a,x)=>a+x.d,0), sy=p.reduce((a,x)=>a+x.w,0);
+  const sxy=p.reduce((a,x)=>a+x.d*x.w,0), sxx=p.reduce((a,x)=>a+x.d*x.d,0);
+  const den=n*sxx-sx*sx;
+  if(!den) return null;
+  return {rate:+(((n*sxy-sx*sy)/den)*7).toFixed(2), span:Math.round(span), n};
+}
+function projection(){
+  const c=calc(); if(!c) return null;
+  const w=cw(), goal=c.goal, need=goal-w;
+  const planned=c.losing?-c.rate:c.rate;
+  const rr=realRate();
+  /* on n'utilise le rythme réel que s'il va dans le bon sens */
+  const ok=rr&&((need<0&&rr.rate<-0.05)||(need>0&&rr.rate>0.05));
+  const used=ok?rr.rate:planned;
+  if(Math.abs(need)<0.15) return {done:true,goal,real:rr,planned};
+  const weeks=need/used;
+  if(weeks<0||!isFinite(weeks))
+    return {stuck:true,goal,real:rr,planned,need};
+  const date=new Date(Date.now()+weeks*7*dayMs);
+  return {goal,need,weeks:Math.ceil(weeks),date,real:rr,planned,used,usingReal:ok};
+}
+const dateLong=d=>d.toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"});
+const kgW=v=>(v>0?"+":"")+v.toFixed(2).replace(".",",")+" kg/sem";
+
+
+/* ---------- COMPARER LES RYTHMES ---------- */
+const dateShort=d=>d.toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"2-digit"});
+/* pour chaque rythme proposé : date d'arrivée, durée et calories quotidiennes */
+function rateTable(){
+  const base=calc(); if(!base) return [];
+  const w=cw(), need=base.goal-w, losing=need<0;
+  return RATES.map(r=>{
+    const c=calc(r);
+    const eff=Math.min(r,losing?1:0.5);
+    const weeks=Math.abs(need)/eff;
+    const date=new Date(Date.now()+weeks*7*dayMs);
+    return {r,weeks:Math.ceil(weeks),date,target:c.target,
+      floored:c.warns.some(x=>/relevées/.test(x))};
+  });
+}
+/* jalons : 80 kg le 15 sept., 78 kg le 20 oct… */
+function milestones(){
+  const pj=projection(); if(!pj||pj.done||pj.stuck) return [];
+  const w=cw(), goal=pj.goal, diff=Math.abs(w-goal);
+  const step=diff>8?2:diff>3?1:0.5;
+  const out=[];
+  const rate=Math.abs(pj.used||pj.planned);
+  for(let x=w-step; out.length<8; x-=step){
+    const v=+x.toFixed(1);
+    if(v<=goal+0.05) break;
+    const weeks=(w-v)/rate;
+    out.push({w:v,date:new Date(Date.now()+weeks*7*dayMs)});
+  }
+  out.push({w:goal,date:pj.date,goal:true});
+  return out;
+}
+
 /* ---- navigation ---- */
 const VIEWS={courses:vCourses,repas:vRepas,sport:vSport,poids:vPoids,guide:vGuide,
   profil:vProfil,edit:vEdit,journal:vJournal};
@@ -2178,7 +2371,7 @@ function refresh(){
 }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
