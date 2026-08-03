@@ -358,6 +358,15 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .ms-dot{width:9px;height:9px;border-radius:50%;background:var(--line);
   border:2px solid var(--muted);flex-shrink:0;}
 .ms-dot.g{background:var(--lime);border-color:var(--lime);}
+
+.map{height:270px;border-radius:18px;overflow:hidden;margin-top:14px;
+  border:1px solid var(--line);box-shadow:var(--shadow);background:var(--surf2);}
+.leaflet-container{font-family:var(--body);border-radius:18px;}
+.gear{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.gear i{font-style:normal;font-family:var(--mono);font-size:10px;
+  background:color-mix(in srgb,var(--cyan) 13%,transparent);color:var(--cyan);
+  padding:3px 7px;border-radius:6px;}
+.goto{display:inline-block;margin-top:9px;text-decoration:none;color:var(--brand);}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -506,12 +515,16 @@ const MEALS = {
 
 const WORKOUTS = {
   Lundi: {
-    session: "Circuit poids du corps (5 rounds)",
-    duration: "35-40 min",
+    session: "Tractions (apprentissage) + circuit",
+    duration: "40-45 min",
     exercises: [
-      "Échauffement : 5 min mobilité articulaire",
+      "Échauffement : 5 min mobilité articulaire, épaules et poignets",
+      "BLOC TRACTIONS — à faire en premier, quand tu es frais :",
+      "Suspension à la barre — 3 x 20 à 30 sec (repos 60 sec)",
+      "Tractions négatives — 4 x 3 (monte sur une chaise, descends en 5 sec)",
+      "Repos 90 sec entre les séries. Voir le Guide pour la progression complète.",
       "5 rounds, 30-45 sec de repos entre chaque exercice, 90 sec entre les rounds :",
-      "Tractions — 10 reps",
+      "Tractions australiennes — 10 reps",
       "Pompes — 15 reps",
       "Dips — 15 reps",
       "Squats — 20 reps",
@@ -542,10 +555,11 @@ const WORKOUTS = {
   },
   Jeudi: {
     session: "Circuit fonctionnel (4 rounds)",
-    duration: "30-35 min",
+    duration: "35-40 min",
     exercises: [
       "Échauffement : 5 min mobilité",
       "4 rounds, 30-45 sec de repos entre chaque exercice, 90 sec entre les rounds :",
+      "Tractions australiennes — 10 reps",
       "Fentes sautées — 12 reps",
       "Burpees — 10 reps",
       "Mountain climbers — 20 reps (10 par côté)",
@@ -565,10 +579,12 @@ const WORKOUTS = {
     ],
   },
   Samedi: {
-    session: "Renfo + mobilité",
-    duration: "45-50 min",
+    session: "Renfo + tractions + mobilité",
+    duration: "50-55 min",
     exercises: [
       "Échauffement : 5 min mobilité",
+      "Suspension à la barre — 3 x max (chrono, note ta progression)",
+      "Tractions assistées à l'élastique — 3 x 6",
       "Squats lestés — 4 x 12",
       "Fentes lestées — 4 x 10 par jambe",
       "Gymnastique de base (roulades, équilibres) — 10 min",
@@ -588,13 +604,43 @@ const WORKOUTS = {
 
 const EXERCISE_GUIDE = [
   {
-    category: "Renforcement — poids du corps",
+    category: "Apprendre les tractions",
     exercises: [
       {
-        name: "Tractions",
-        desc: "Suspendu à la barre, mains en pronation légèrement plus larges que les épaules. Tire le corps vers le haut jusqu'à ce que le menton dépasse la barre, puis redescends en contrôlant.",
-        tip: "Évite de te balancer — garde le gainage serré pour un mouvement propre.",
+        name: "La progression en 5 étapes",
+        desc: "Étape 1 — Suspension : tenir 30 sec à la barre, bras tendus. Étape 2 — Tractions australiennes : 3 séries de 12. Étape 3 — Négatives : 4 séries de 5 descentes de 5 sec. Étape 4 — Élastique : 3 séries de 8. Étape 5 — Traction stricte. Tu passes à l'étape suivante quand tu tiens le chiffre indiqué proprement, deux séances de suite.",
+        tip: "Compte 6 à 12 semaines pour arriver à la première traction stricte. C'est normal, et perdre du poids t'y aidera autant que l'entraînement.",
       },
+      {
+        name: "Suspension à la barre",
+        desc: "Attrape la barre en pronation, largeur épaules, et laisse-toi pendre bras tendus, pieds décollés. Garde les épaules actives : abaisse-les légèrement plutôt que de rester tassé dans les trapèzes.",
+        tip: "C'est la base : ça construit la force de préhension, souvent le vrai facteur limitant au début.",
+      },
+      {
+        name: "Traction australienne",
+        desc: "Barre à hauteur de hanches (ou une table solide). Allonge-toi dessous, corps gainé en planche, talons au sol. Tire la poitrine vers la barre, puis redescends en contrôlant.",
+        tip: "Plus tes pieds sont loin, plus c'est dur. Rapproche-les pour alléger, éloigne-les pour progresser.",
+      },
+      {
+        name: "Traction négative",
+        desc: "Monte au sommet de la barre avec l'aide d'une chaise ou d'un saut, menton au-dessus. Puis descends le plus lentement possible, en 5 secondes minimum, jusqu'aux bras tendus.",
+        tip: "La phase de descente développe autant de force que la montée. C'est l'exercice qui débloque le plus vite la première traction.",
+      },
+      {
+        name: "Traction assistée à l'élastique",
+        desc: "Accroche un élastique à la barre, pose un genou ou un pied dedans, et fais une traction complète. L'élastique t'aide surtout en bas, là où c'est le plus dur.",
+        tip: "Prends un élastique qui te laisse faire 6 à 8 reps difficiles. Quand tu montes à 12, passe à un élastique plus fin.",
+      },
+      {
+        name: "Traction stricte",
+        desc: "Suspendu bras tendus, mains en pronation un peu plus larges que les épaules. Tire jusqu'à ce que le menton dépasse la barre, puis redescends en contrôlant jusqu'à l'extension complète.",
+        tip: "Pas de balancement ni de coup de reins. Une traction propre vaut mieux que trois bâclées.",
+      },
+    ],
+  },
+  {
+    category: "Renforcement — poids du corps",
+    exercises: [
       {
         name: "Pompes",
         desc: "Mains au sol un peu plus larges que les épaules, corps aligné tête-bassin-talons. Descends jusqu'à effleurer le sol avec la poitrine, puis repousse.",
@@ -720,7 +766,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
-const APP_VERSION="27";
+const APP_VERSION="29";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -1407,13 +1453,15 @@ const ICONS={
   poids:'<circle cx="12" cy="7" r="3.4"/><path d="M4 21V9a3 3 0 013-3h10a3 3 0 013 3v12z"/>',
   guide:'<path d="M4 4h7a2 2 0 012 2v14a2 2 0 00-2-2H4z"/><path d="M20 4h-7a2 2 0 00-2 2v14a2 2 0 012-2h7z"/>',
   profil:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0115 0"/>',
-  journal:'<path d="M5 3h14v18l-7-4-7 4z"/><path d="M9 8h6M9 12h4"/>'
+  journal:'<path d="M5 3h14v18l-7-4-7 4z"/><path d="M9 8h6M9 12h4"/>',
+  spots:'<path d="M12 21s7-6.4 7-11a7 7 0 10-14 0c0 4.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/>'
 };
 const TABS={
   courses:{t:"Courses",c:"var(--cyan)"}, repas:{t:"Repas",c:"var(--lime)"},
   sport:{t:"Sport",c:"var(--red)"}, poids:{t:"Poids",c:"var(--cyan)"},
   guide:{t:"Guide",c:"var(--lime)"}, profil:{t:"Profil",c:"var(--red)"},
-  journal:{t:"Journal",c:"var(--cyan)"}
+  journal:{t:"Journal",c:"var(--cyan)"},
+  spots:{t:"Spots",c:"var(--lime)"}
 };
 
 function renderHome(){
@@ -1497,6 +1545,11 @@ function renderHome(){
         <span class="ic" style="background:color-mix(in srgb,var(--lime) 16%,transparent)">
           <svg viewBox="0 0 24 24" style="stroke:var(--lime)">${ICONS.guide}</svg></span>
         <h3>Guide</h3><p>${subs.guide}</p><span class="arrow">›</span>
+      </button>
+      <button class="tile" data-go="spots">
+        <span class="ic" style="background:color-mix(in srgb,var(--lime) 16%,transparent)">
+          <svg viewBox="0 0 24 24" style="stroke:var(--lime)">${ICONS.spots}</svg></span>
+        <h3>Spots</h3><p>Où s'entraîner dehors</p><span class="arrow">›</span>
       </button>
       <button class="tile" data-go="profil">
         <span class="ic" style="background:color-mix(in srgb,var(--red) 16%,transparent)">
@@ -2295,9 +2348,176 @@ function milestones(){
   return out;
 }
 
+
+/* ---------- SPOTS DE STREET WORKOUT (OpenStreetMap) ---------- */
+let spots=S.get("spots",null);          // dernier résultat, consultable hors ligne
+let spotState={loading:false,err:null,radius:3000};
+let LMap=null, LLayer=null;
+
+/* Leaflet chargé seulement quand on ouvre la page */
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  return new Promise((ok,ko)=>{
+    const c=document.createElement("link");
+    c.rel="stylesheet"; c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(c);
+    const j=document.createElement("script");
+    j.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    j.onload=ok; j.onerror=()=>ko(new Error("Leaflet"));
+    document.head.appendChild(j);
+  });
+}
+const R_EARTH=6371;
+function distKm(a,b,c,d){
+  const r=x=>x*Math.PI/180;
+  const dLa=r(c-a), dLo=r(d-b);
+  const x=Math.sin(dLa/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dLo/2)**2;
+  return 2*R_EARTH*Math.asin(Math.sqrt(x));
+}
+const fmtDist=k=>k<1?Math.round(k*1000)+" m":k.toFixed(1).replace(".",",")+" km";
+
+/* équipements repérables dans les tags OSM */
+const GEAR=[
+  [/pull.?up|horizontal_bar|barre/i,"Barre de traction"],
+  [/parallel|dip/i,"Barres parallèles / dips"],
+  [/rings|anneaux/i,"Anneaux"],
+  [/wall.?bars|espalier/i,"Espalier"],
+  [/rope|corde/i,"Corde"],
+  [/beam|poutre/i,"Poutre"],
+  [/push.?up/i,"Barres de pompes"],
+  [/sit.?up|abdo/i,"Banc abdos"],
+  [/monkey/i,"Échelle horizontale"]
+];
+function gearOf(t){
+  const out=[];
+  Object.keys(t||{}).forEach(k=>{
+    if(t[k]==="no") return;
+    GEAR.forEach(([re,lbl])=>{ if((re.test(k)||re.test(String(t[k])))&&!out.includes(lbl)) out.push(lbl); });
+  });
+  return out;
+}
+function spotName(t){
+  return t.name||t["name:fr"]||
+    (t.sport==="calisthenics"?"Aire de street workout":
+     t.leisure==="fitness_station"?"Agrès de fitness":
+     t.leisure==="pitch"?"Terrain de sport":"Spot d'entraînement");
+}
+
+/* interrogation d'OpenStreetMap via Overpass */
+function fetchSpots(lat,lon,rad){
+  const q=`[out:json][timeout:25];(
+    node["leisure"="fitness_station"](around:${rad},${lat},${lon});
+    way["leisure"="fitness_station"](around:${rad},${lat},${lon});
+    node["sport"="calisthenics"](around:${rad},${lat},${lon});
+    way["sport"="calisthenics"](around:${rad},${lat},${lon});
+    node["fitness_station"](around:${rad},${lat},${lon});
+    way["fitness_station"](around:${rad},${lat},${lon});
+  );out center tags;`;
+  return fetch("https://overpass-api.de/api/interpreter",
+      {method:"POST",body:"data="+encodeURIComponent(q)})
+    .then(r=>{ if(!r.ok) throw new Error("Overpass "+r.status); return r.json(); })
+    .then(j=>{
+      const list=(j.elements||[]).map(e=>{
+        const la=e.lat||(e.center&&e.center.lat), lo=e.lon||(e.center&&e.center.lon);
+        if(la==null) return null;
+        const t=e.tags||{};
+        return {id:e.type+e.id,lat:la,lon:lo,n:spotName(t),
+          gear:gearOf(t),d:distKm(lat,lon,la,lo)};
+      }).filter(Boolean).sort((a,b)=>a.d-b.d).slice(0,40);
+      return {lat,lon,rad,at:Date.now(),list};
+    });
+}
+function findSpots(){
+  if(!navigator.geolocation){ spotState.err="Géolocalisation indisponible sur cet appareil."; return refresh(); }
+  spotState.loading=true; spotState.err=null; refresh();
+  navigator.geolocation.getCurrentPosition(
+    p=>{
+      fetchSpots(p.coords.latitude,p.coords.longitude,spotState.radius)
+        .then(r=>{ spots=r; S.set("spots",spots); spotState.loading=false; refresh(); })
+        .catch(()=>{ spotState.loading=false;
+          spotState.err="OpenStreetMap n'a pas répondu. Réessaie dans un instant."; refresh(); });
+    },
+    e=>{ spotState.loading=false;
+      spotState.err = e.code===1
+        ? "Autorise la localisation dans les réglages de ton navigateur pour voir les spots autour de toi."
+        : "Position introuvable. Vérifie que le GPS est activé.";
+      refresh(); },
+    {enableHighAccuracy:true,timeout:12000,maximumAge:120000}
+  );
+}
+
+/* la carte est dessinée après le rendu HTML */
+function drawMap(){
+  if(!spots||!spots.list.length) return;
+  loadLeaflet().then(()=>{
+    const el=document.getElementById("map");
+    if(!el||!window.L) return;
+    if(LMap){ LMap.remove(); LMap=null; }
+    LMap=L.map(el,{scrollWheelZoom:false}).setView([spots.lat,spots.lon],14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {maxZoom:19,attribution:"© OpenStreetMap"}).addTo(LMap);
+    L.circleMarker([spots.lat,spots.lon],{radius:7,color:"#5B54B8",fillColor:"#5B54B8",
+      fillOpacity:.9,weight:2}).addTo(LMap).bindPopup("Tu es ici");
+    const b=[[spots.lat,spots.lon]];
+    spots.list.forEach(sp=>{
+      L.circleMarker([sp.lat,sp.lon],{radius:8,color:"#D97583",fillColor:"#D97583",
+        fillOpacity:.75,weight:2}).addTo(LMap)
+        .bindPopup(`<b>${sp.n}</b><br>${fmtDist(sp.d)}${sp.gear.length?"<br>"+sp.gear.join(", "):""}`);
+      b.push([sp.lat,sp.lon]);
+    });
+    try{ LMap.fitBounds(b,{padding:[25,25],maxZoom:15}); }catch(e){}
+    setTimeout(()=>LMap.invalidateSize(),120);
+  }).catch(()=>{});
+}
+
+function vSpots(){
+  let h=`<p class="note">Aires de street workout, barres de traction et agrès en accès libre,
+    recensés sur OpenStreetMap. Nécessite une connexion et ta position.</p>`;
+
+  h+=`<div class="seg" style="margin-bottom:12px">
+    ${[[1000,"1 km"],[3000,"3 km"],[10000,"10 km"]].map(([r,l])=>
+      `<button data-rad="${r}" class="${spotState.radius===r?'on':''}">${l}</button>`).join("")}</div>`;
+
+  h+=`<button class="save" id="findSpots" ${spotState.loading?"disabled":""}>
+    ${spotState.loading?"Recherche…":spots?"Actualiser autour de moi":"Trouver les spots près de moi"}</button>`;
+
+  if(spotState.err) h+=`<div class="warn" style="margin-top:13px">${esc(spotState.err)}</div>`;
+
+  if(spots){
+    const age=Math.round((Date.now()-spots.at)/60000);
+    h+=`<div id="map" class="map"></div>
+      <p class="note" style="margin-top:9px">${spots.list.length} spot${spots.list.length>1?"s":""}
+      dans un rayon de ${spots.rad/1000} km · relevé il y a ${age<1?"moins d'une minute":age<60?age+" min":Math.round(age/60)+" h"}</p>`;
+
+    if(!spots.list.length){
+      h+=`<div class="empty">Rien de recensé dans ce rayon.<br>Élargis la zone, ou vérifie
+        les parcs et stades autour de toi : beaucoup d'agrès ne sont pas encore cartographiés.</div>`;
+    }else{
+      h+=`<div class="sechead"><h3>Les plus proches</h3><span>à pied ou à vélo</span></div>`;
+      spots.list.forEach(sp=>{
+        h+=`<div class="card" style="margin-bottom:9px"><div class="row" style="border:none">
+          <span class="grow">
+            <span class="between"><b style="font-size:14px">${esc(sp.n)}</b>
+            <span class="qty">${fmtDist(sp.d)}</span></span>
+            ${sp.gear.length?`<span class="gear">${sp.gear.map(g=>`<i>${esc(g)}</i>`).join("")}</span>`:
+              `<span class="kcal" style="display:block;margin-top:4px">Équipement non détaillé</span>`}
+            <a class="mini goto" href="https://www.openstreetmap.org/?mlat=${sp.lat}&mlon=${sp.lon}#map=18/${sp.lat}/${sp.lon}"
+              target="_blank" rel="noopener">Ouvrir dans le plan</a>
+          </span></div></div>`;
+      });
+    }
+  }
+
+  h+=`<div class="info" style="margin-top:14px">Les données viennent d'OpenStreetMap, alimenté
+    par des contributeurs bénévoles : la couverture est bonne en ville, plus lâche ailleurs.
+    Un spot manque ? Tu peux l'ajouter toi-même sur openstreetmap.org.<br><br>
+    Pense aussi aux parcours de santé, stades municipaux et cours d'école ouvertes le week-end.</div>`;
+  return h;
+}
+
 /* ---- navigation ---- */
 const VIEWS={courses:vCourses,repas:vRepas,sport:vSport,poids:vPoids,guide:vGuide,
-  profil:vProfil,edit:vEdit,journal:vJournal};
+  profil:vProfil,edit:vEdit,journal:vJournal,spots:vSpots};
 
 /* ouvre l'éditeur : part du repas perso s'il existe, sinon du plan de saison */
 function openEditor(d,i){
@@ -2344,6 +2564,7 @@ function go(k,keep){
     k==="courses"?p.g+"%": k==="repas"?p.m+"%": k==="sport"?p.w+"%":
     k==="edit"?edit.d:"";
   document.getElementById("app").innerHTML=VIEWS[k]();
+  if(k==="spots") setTimeout(drawMap,60); else if(LMap){ LMap.remove(); LMap=null; }
   home.style.display="none"; page.style.display="block";
   if(!keep) window.scrollTo(0,0);
 }
@@ -2371,7 +2592,7 @@ function refresh(){
 }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-rad],#findSpots,[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -2405,6 +2626,8 @@ document.addEventListener("click",e=>{
   }
   if(t.dataset.fcat!==undefined&&edit){ edit.cat=t.dataset.fcat; return refresh(); }
   if(t.dataset.jcat!==undefined){ jcat=t.dataset.jcat; return refresh(); }
+  if(t.id==="findSpots"){ return findSpots(); }
+  if(t.dataset.rad){ spotState.radius=+t.dataset.rad; return refresh(); }
   if(t.dataset.jday){ logDate=t.dataset.jday; return go("journal"); }
   if(t.dataset.log){ logAdd(t.dataset.log,defaultG(t.dataset.log)); return refresh(); }
   if(t.dataset.sugg!==undefined){
