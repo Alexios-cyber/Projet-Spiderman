@@ -243,6 +243,7 @@ ul.plain{margin:0;padding:0;list-style:none;}
   text-transform:uppercase;margin:4px 0 12px;}
 
 /* ---- éditeur de repas ---- */
+.pill.eat{background:color-mix(in srgb,var(--cyan) 20%,transparent);color:var(--cyan);}
 .pill{display:inline-block;background:color-mix(in srgb,var(--lime) 22%,transparent);
   color:var(--lime);font-family:var(--mono);font-size:9px;letter-spacing:1.2px;
   text-transform:uppercase;padding:2px 6px;border-radius:5px;margin-left:7px;vertical-align:1px;}
@@ -250,6 +251,8 @@ ul.plain{margin:0;padding:0;list-style:none;}
   border-radius:9px;padding:5px 10px;font-family:var(--mono);font-size:10px;
   letter-spacing:1px;text-transform:uppercase;}
 .edit:active{border-color:var(--cyan);}
+.edit.vide{color:var(--red);}
+.edit.vide:active{border-color:var(--red);}
 .ing{background:var(--surf);border:1px solid var(--line);border-radius:16px;
   padding:13px 14px;margin-bottom:9px;box-shadow:var(--shadow);}
 .gram{display:flex;align-items:center;gap:6px;margin-top:10px;}
@@ -327,6 +330,18 @@ ul.plain{margin:0;padding:0;list-style:none;}
 .wk-d:active{transform:scale(.93);}
 .ver{text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);
   opacity:.6;margin:20px 0 0;letter-spacing:.5px;}
+
+.sg{background:var(--surf);border:1px solid var(--line);border-radius:18px;
+  padding:15px;margin-bottom:11px;box-shadow:var(--shadow);}
+.sg-t{font-family:var(--disp);font-size:15px;font-weight:700;letter-spacing:-.3px;color:var(--brand);}
+.sg-k{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--lime);}
+.sg-i{padding:3px 0;font-size:13.5px;}
+.sg-b{margin-top:11px;width:100%;text-align:center;
+  background:color-mix(in srgb,var(--brand) 9%,var(--surf));border-color:var(--brand);
+  color:var(--brand);font-weight:500;}
+.eaten{background:color-mix(in srgb,var(--cyan) 10%,var(--surf));
+  border-top:1px solid var(--line);padding:11px 15px;font-size:12.5px;line-height:1.55;}
+.eaten b{color:var(--cyan);font-family:var(--mono);}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -689,7 +704,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
-const APP_VERSION="19";
+const APP_VERSION="25";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -709,6 +724,13 @@ function catalog(){
   return [
     fixed["Viande"],
     {category:"Poisson", icon:"🐟", items:prod("ps",M.p,"2 à 3 pavés")},
+    {category:"Fromages", icon:"🧀", items:[
+      {id:"fro-comte",name:"Comté",qty:"200 g"},
+      {id:"fro-mozza",name:"Mozzarella",qty:"1 boule"},
+      {id:"fro-feta",name:"Feta",qty:"200 g"},
+      {id:"fro-chevre",name:"Bûche de chèvre",qty:"1"},
+      {id:"fro-parm",name:"Parmigiano Reggiano",qty:"100 g"},
+      {id:"fro-blanc",name:"Fromage blanc 0%",qty:"1 kg"}]},
     fixed["Œufs & laitages"],
     {category:"Fruits", icon:"🍎", items:prod("fr",M.f,"500 g")},
     {category:"Légumes", icon:"🥦", items:prod("lg",M.l,"500 g")},
@@ -716,13 +738,13 @@ function catalog(){
     fixed["Épicerie"]
   ].filter(Boolean);
 }
-const CATS=["Viande","Poisson","Œufs & laitages","Fruits","Légumes",
+const CATS=["Viande","Poisson","Fromages","Œufs & laitages","Fruits","Légumes",
   "Féculents & céréales","Épicerie"];
-const ICON_OF={"Viande":"🥩","Poisson":"🐟","Œufs & laitages":"🥚","Fruits":"🍎",
+const ICON_OF={"Viande":"🥩","Poisson":"🐟","Fromages":"🧀","Œufs & laitages":"🥚","Fruits":"🍎",
   "Légumes":"🥦","Féculents & céréales":"🌾","Épicerie":"🫙","Divers":"🛒"};
 /* anciens identifiants du plan d'origine */
 const LEGACY={p1:"Œufs & laitages",p2:"Viande",p3:"Viande",p4:"Poisson",p5:"Poisson",
-  p6:"Viande",p7:"Œufs & laitages",p8:"Œufs & laitages",a5:"Œufs & laitages",
+  p6:"Viande",p7:"Œufs & laitages",p8:"Œufs & laitages",a5:"Fromages",
   l1:"Fruits",l2:"Fruits",l3:"Fruits",l4:"Légumes",l5:"Légumes",l6:"Légumes",
   l7:"Légumes",l8:"Légumes",f1:"Féculents & céréales",f2:"Féculents & céréales",
   f3:"Féculents & céréales",f4:"Féculents & céréales",f5:"Féculents & céréales",
@@ -835,9 +857,10 @@ if(list===null){
 
 
 const FOODS=[
-["Blanc de poulet",120,23,0,2.5,"Viande"],["Cuisse de poulet",150,19,0,8,"Viande"],["Escalope de dinde",110,24,0,1.5,"Viande"],["Steak haché 5%",125,21,0,5,"Viande"],["Steak haché 15%",210,19,0,15,"Viande"],["Bavette de bœuf",175,26,0,8,"Viande"],["Rumsteck",135,23,0,4.5,"Viande"],["Escalope de veau",115,22,0,3,"Viande"],["Filet mignon de porc",125,22,0,4,"Viande"],["Côte de porc",210,20,0,14,"Viande"],["Rôti de porc",165,23,0,8,"Viande"],["Jambon blanc",110,20,1,3,"Viande"],["Jambon cru",240,26,0.5,15,"Viande"],["Lardons",300,15,0.5,27,"Viande"],["Saucisse de Toulouse",290,15,1,25,"Viande"],["Merguez",300,15,1,26,"Viande"],["Chorizo",380,22,2,31,"Viande"],["Côte d'agneau",230,20,0,17,"Viande"],["Magret de canard",200,19,0,14,"Viande"],["Haché de dinde",130,20,0,5,"Viande"],["Foie de veau",130,20,3,4,"Viande"],["Boudin noir",320,14,3,29,"Viande"],["Cabillaud",82,18,0,0.7,"Poisson"],["Colin",80,17,0,1,"Poisson"],["Lieu noir",80,18,0,0.8,"Poisson"],["Merlu",85,17,0,1.5,"Poisson"],["Saumon frais",200,20,0,13,"Poisson"],["Saumon fumé",180,22,0,10,"Poisson"],["Truite",120,20,0,4,"Poisson"],["Thon frais",108,23,0,1.5,"Poisson"],["Thon en boîte au naturel",115,26,0,1,"Poisson"],["Sardine fraîche",165,20,0,9,"Poisson"],["Sardine à l'huile",220,24,0,14,"Poisson"],["Maquereau",205,19,0,14,"Poisson"],["Dorade",96,20,0,1.8,"Poisson"],["Bar",97,19,0,2,"Poisson"],["Sole",78,17,0,1,"Poisson"],["Hareng",158,18,0,9,"Poisson"],["Crevettes",85,18,0.5,1,"Poisson"],["Moules",86,12,4,2,"Poisson"],["Huîtres",68,9,4,2,"Poisson"],["Saint-Jacques",88,17,2,1,"Poisson"],["Calamar",80,15,3,1,"Poisson"],["Surimi",95,10,12,1,"Poisson"],["Anchois",130,20,0,5,"Poisson"],["Crabe",85,18,0,1,"Poisson"],["Œuf entier",155,13,1,11,"Œufs & laitages"],["Blanc d'œuf",52,11,0.7,0.2,"Œufs & laitages"],["Jaune d'œuf",320,16,1,27,"Œufs & laitages"],["Lait entier",64,3.2,4.8,3.6,"Œufs & laitages"],["Lait demi-écrémé",47,3.2,4.8,1.6,"Œufs & laitages"],["Lait écrémé",34,3.4,5,0.1,"Œufs & laitages"],["Yaourt nature",60,4,5,3,"Œufs & laitages"],["Yaourt grec",115,6,4,9,"Œufs & laitages"],["Skyr nature",65,11,4,0.2,"Œufs & laitages"],["Fromage blanc 0%",47,8,4,0.2,"Œufs & laitages"],["Fromage blanc 3%",73,7.5,4,3,"Œufs & laitages"],["Petit-suisse",95,9,3,5,"Œufs & laitages"],["Cottage cheese",98,11,3,4.3,"Œufs & laitages"],["Emmental",380,28,1,29,"Œufs & laitages"],["Comté",410,27,1,33,"Œufs & laitages"],["Mozzarella",250,18,1,19,"Œufs & laitages"],["Feta",265,14,4,21,"Œufs & laitages"],["Chèvre frais",210,15,2,16,"Œufs & laitages"],["Camembert",300,20,1,24,"Œufs & laitages"],["Roquefort",370,19,2,32,"Œufs & laitages"],["Parmesan",400,33,4,28,"Œufs & laitages"],["Cheddar",400,25,1,33,"Œufs & laitages"],["Ricotta",145,11,3,10,"Œufs & laitages"],["Crème fraîche 30%",290,2.5,3,30,"Œufs & laitages"],["Crème légère 15%",155,3,4,15,"Œufs & laitages"],["Beurre",745,0.7,0.6,82,"Œufs & laitages"],["Riz blanc",350,7,78,0.6,"Féculents & céréales"],["Riz complet",345,7.5,73,2.7,"Féculents & céréales"],["Riz basmati",350,8,77,0.9,"Féculents & céréales"],["Pâtes",355,12,72,1.5,"Féculents & céréales"],["Pâtes complètes",340,13,65,2.5,"Féculents & céréales"],["Semoule",350,12,73,1,"Féculents & céréales"],["Quinoa",370,14,64,6,"Féculents & céréales"],["Boulgour",345,12,70,1.5,"Féculents & céréales"],["Flocons d'avoine",375,13,60,7,"Féculents & céréales"],["Muesli",380,10,60,10,"Féculents & céréales"],["Pain complet",250,9,45,3,"Féculents & céréales"],["Pain blanc",265,8,52,2,"Féculents & céréales"],["Baguette",270,9,55,1.5,"Féculents & céréales"],["Pain de mie",280,8,50,5,"Féculents & céréales"],["Biscotte",390,11,75,5,"Féculents & céréales"],["Pomme de terre",80,2,17,0.2,"Féculents & céréales"],["Patate douce",86,1.6,20,0.1,"Féculents & céréales"],["Polenta",360,8,78,1.5,"Féculents & céréales"],["Sarrasin",345,13,65,3.5,"Féculents & céréales"],["Tortilla de blé",300,8,50,7,"Féculents & céréales"],["Lentilles vertes",350,25,50,1.5,"Féculents & céréales"],["Lentilles corail",345,24,52,1.5,"Féculents & céréales"],["Pois chiches",360,19,58,6,"Féculents & céréales"],["Haricots rouges",335,22,55,1.5,"Féculents & céréales"],["Haricots blancs",330,21,54,1.5,"Féculents & céréales"],["Pois cassés",340,23,55,1.2,"Féculents & céréales"],["Tofu nature",120,13,2,7,"Féculents & céréales"],["Tofu fumé",150,17,2,9,"Féculents & céréales"],["Tempeh",190,19,9,11,"Féculents & céréales"],["Edamame",125,11,9,5,"Féculents & céréales"],["Protéine de soja texturée",340,52,20,1,"Féculents & céréales"],["Tomate",18,0.9,3.5,0.2,"Légumes"],["Tomate cerise",20,1,4,0.2,"Légumes"],["Courgette",17,1.2,2.5,0.3,"Légumes"],["Aubergine",25,1,5,0.2,"Légumes"],["Poivron",26,1,5,0.3,"Légumes"],["Carotte",41,0.9,9,0.2,"Légumes"],["Brocoli",34,2.8,5,0.4,"Légumes"],["Chou-fleur",25,2,4,0.3,"Légumes"],["Épinards",23,2.9,1.5,0.4,"Légumes"],["Haricot vert",31,1.8,5,0.2,"Légumes"],["Petits pois",81,5,14,0.4,"Légumes"],["Poireau",29,1.5,6,0.3,"Légumes"],["Oignon",40,1.1,9,0.1,"Légumes"],["Ail",149,6,33,0.5,"Légumes"],["Champignon de Paris",22,3,1,0.3,"Légumes"],["Concombre",15,0.7,2,0.1,"Légumes"],["Salade verte",15,1.4,1.5,0.2,"Légumes"],["Mâche",21,2,2,0.4,"Légumes"],["Roquette",25,2.6,2,0.7,"Légumes"],["Endive",17,1,3,0.1,"Légumes"],["Chou vert",25,1.8,4,0.1,"Légumes"],["Chou rouge",31,1.4,6,0.2,"Légumes"],["Chou de Bruxelles",43,3.4,7,0.3,"Légumes"],["Chou frisé",49,4.3,6,0.9,"Légumes"],["Betterave",43,1.6,9,0.2,"Légumes"],["Céleri",16,0.7,3,0.2,"Légumes"],["Céleri-rave",42,1.5,9,0.3,"Légumes"],["Fenouil",31,1.2,6,0.2,"Légumes"],["Radis",16,0.7,3,0.1,"Légumes"],["Navet",28,0.9,6,0.1,"Légumes"],["Panais",75,1.2,17,0.3,"Légumes"],["Potiron",26,1,6,0.1,"Légumes"],["Courge butternut",45,1,11,0.1,"Légumes"],["Asperge",20,2.2,2,0.1,"Légumes"],["Artichaut",47,3.3,8,0.2,"Légumes"],["Maïs",86,3.2,19,1.2,"Légumes"],["Topinambour",73,2,17,0.1,"Légumes"],["Blette",19,1.8,2,0.2,"Légumes"],["Fève",88,8,11,0.7,"Légumes"],["Olive verte",145,1,4,15,"Légumes"],["Avocat",160,2,2,15,"Légumes"],["Cornichon",14,0.7,2,0.2,"Légumes"],["Pomme",52,0.3,14,0.2,"Fruits"],["Poire",57,0.4,15,0.1,"Fruits"],["Banane",89,1.1,23,0.3,"Fruits"],["Orange",47,0.9,12,0.1,"Fruits"],["Clémentine",53,0.9,13,0.2,"Fruits"],["Pamplemousse",42,0.8,11,0.1,"Fruits"],["Kiwi",61,1.1,15,0.5,"Fruits"],["Fraise",33,0.7,8,0.3,"Fruits"],["Framboise",52,1.2,12,0.7,"Fruits"],["Myrtille",57,0.7,14,0.3,"Fruits"],["Mûre",43,1.4,10,0.5,"Fruits"],["Cerise",63,1,16,0.2,"Fruits"],["Raisin",69,0.7,18,0.2,"Fruits"],["Pêche",39,0.9,10,0.3,"Fruits"],["Abricot",48,1.4,11,0.4,"Fruits"],["Prune",46,0.7,11,0.3,"Fruits"],["Figue",74,0.8,19,0.3,"Fruits"],["Melon",34,0.8,8,0.2,"Fruits"],["Pastèque",30,0.6,8,0.2,"Fruits"],["Ananas",50,0.5,13,0.1,"Fruits"],["Mangue",60,0.8,15,0.4,"Fruits"],["Grenade",83,1.7,19,1.2,"Fruits"],["Citron",29,1.1,9,0.3,"Fruits"],["Coing",57,0.4,15,0.1,"Fruits"],["Rhubarbe",21,0.9,4,0.2,"Fruits"],["Datte",280,2.5,68,0.4,"Fruits"],["Pruneau",240,2.2,64,0.4,"Fruits"],["Raisin sec",300,3,79,0.5,"Fruits"],["Abricot sec",240,3.4,63,0.5,"Fruits"],["Compote sans sucre",50,0.4,12,0.1,"Fruits"],["Amande",600,21,8,52,"Épicerie"],["Noix",690,15,7,65,"Épicerie"],["Noisette",630,15,7,61,"Épicerie"],["Noix de cajou",575,18,27,44,"Épicerie"],["Pistache",560,20,17,45,"Épicerie"],["Cacahuète",570,26,12,48,"Épicerie"],["Beurre de cacahuète",590,25,12,50,"Épicerie"],["Purée d'amande",620,21,7,55,"Épicerie"],["Graine de courge",560,30,10,49,"Épicerie"],["Graine de tournesol",580,21,11,51,"Épicerie"],["Graine de chia",490,17,42,31,"Épicerie"],["Graine de lin",530,18,29,42,"Épicerie"],["Sésame",570,18,23,50,"Épicerie"],["Tahini",600,17,21,53,"Épicerie"],["Huile d'olive",900,0,0,100,"Épicerie"],["Huile de colza",900,0,0,100,"Épicerie"],["Huile de coco",890,0,0,99,"Épicerie"],["Margarine",720,0.2,0.5,80,"Épicerie"],["Mayonnaise",680,1,2,75,"Épicerie"],["Ketchup",100,1,24,0.1,"Épicerie"],["Moutarde",65,4,5,3,"Épicerie"],["Sauce soja",60,6,6,0,"Épicerie"],["Vinaigre balsamique",90,0.5,17,0,"Épicerie"],["Bouillon cube",230,10,20,12,"Épicerie"],["Miel",300,0.3,80,0,"Épicerie"],["Sirop d'érable",260,0,67,0,"Épicerie"],["Sucre",400,0,100,0,"Épicerie"],["Confiture",250,0.5,60,0.1,"Épicerie"],["Chocolat noir 70%",560,9,33,42,"Épicerie"],["Chocolat au lait",535,7,58,30,"Épicerie"],["Cacao non sucré",230,20,15,11,"Épicerie"],["Farine de blé",345,10,72,1,"Épicerie"],["Whey protéine",380,78,7,5,"Épicerie"],["Lait d'amande",25,0.5,3,1.5,"Épicerie"],["Lait de soja",40,3.3,2,2,"Épicerie"],["Jus d'orange",45,0.7,10,0.1,"Épicerie"],["Houmous",230,7,15,16,"Épicerie"],["Pesto",450,5,6,45,"Épicerie"],["Lait de coco",190,2,3,19,"Épicerie"],["Tomate concassée",30,1.5,5,0.2,"Épicerie"],
+["Blanc de poulet",120,23,0,2.5,"Viande"],["Cuisse de poulet",150,19,0,8,"Viande"],["Escalope de dinde",110,24,0,1.5,"Viande"],["Steak haché 5%",125,21,0,5,"Viande"],["Steak haché 15%",210,19,0,15,"Viande"],["Bavette de bœuf",175,26,0,8,"Viande"],["Rumsteck",135,23,0,4.5,"Viande"],["Escalope de veau",115,22,0,3,"Viande"],["Filet mignon de porc",125,22,0,4,"Viande"],["Côte de porc",210,20,0,14,"Viande"],["Rôti de porc",165,23,0,8,"Viande"],["Jambon blanc",110,20,1,3,"Viande"],["Jambon cru",240,26,0.5,15,"Viande"],["Lardons",300,15,0.5,27,"Viande"],["Saucisse de Toulouse",290,15,1,25,"Viande"],["Merguez",300,15,1,26,"Viande"],["Chorizo",380,22,2,31,"Viande"],["Côte d'agneau",230,20,0,17,"Viande"],["Magret de canard",200,19,0,14,"Viande"],["Haché de dinde",130,20,0,5,"Viande"],["Foie de veau",130,20,3,4,"Viande"],["Boudin noir",320,14,3,29,"Viande"],["Cabillaud",82,18,0,0.7,"Poisson"],["Colin",80,17,0,1,"Poisson"],["Lieu noir",80,18,0,0.8,"Poisson"],["Merlu",85,17,0,1.5,"Poisson"],["Saumon frais",200,20,0,13,"Poisson"],["Saumon fumé",180,22,0,10,"Poisson"],["Truite",120,20,0,4,"Poisson"],["Thon frais",108,23,0,1.5,"Poisson"],["Thon en boîte au naturel",115,26,0,1,"Poisson"],["Sardine fraîche",165,20,0,9,"Poisson"],["Sardine à l'huile",220,24,0,14,"Poisson"],["Maquereau",205,19,0,14,"Poisson"],["Dorade",96,20,0,1.8,"Poisson"],["Bar",97,19,0,2,"Poisson"],["Sole",78,17,0,1,"Poisson"],["Hareng",158,18,0,9,"Poisson"],["Crevettes",85,18,0.5,1,"Poisson"],["Moules",86,12,4,2,"Poisson"],["Huîtres",68,9,4,2,"Poisson"],["Saint-Jacques",88,17,2,1,"Poisson"],["Calamar",80,15,3,1,"Poisson"],["Surimi",95,10,12,1,"Poisson"],["Anchois",130,20,0,5,"Poisson"],["Crabe",85,18,0,1,"Poisson"],["Œuf entier",155,13,1,11,"Œufs & laitages"],["Blanc d'œuf",52,11,0.7,0.2,"Œufs & laitages"],["Jaune d'œuf",320,16,1,27,"Œufs & laitages"],["Lait entier",64,3.2,4.8,3.6,"Œufs & laitages"],["Lait demi-écrémé",47,3.2,4.8,1.6,"Œufs & laitages"],["Lait écrémé",34,3.4,5,0.1,"Œufs & laitages"],["Yaourt nature",60,4,5,3,"Œufs & laitages"],["Yaourt grec",115,6,4,9,"Œufs & laitages"],["Skyr nature",65,11,4,0.2,"Œufs & laitages"],["Fromage blanc 0%",47,8,4,0.2,"Œufs & laitages"],["Fromage blanc 3%",73,7.5,4,3,"Œufs & laitages"],["Petit-suisse",95,9,3,5,"Œufs & laitages"],["Cottage cheese",98,11,3,4.3,"Œufs & laitages"],["Emmental",380,28,1,29,"Fromages"],["Comté",410,27,1,33,"Fromages"],["Mozzarella",250,18,1,19,"Fromages"],["Feta",265,14,4,21,"Fromages"],["Chèvre frais",210,15,2,16,"Fromages"],["Camembert",300,20,1,24,"Fromages"],["Roquefort",370,19,2,32,"Fromages"],["Parmesan",400,33,4,28,"Fromages"],["Cheddar",400,25,1,33,"Fromages"],["Ricotta",145,11,3,10,"Fromages"],["Crème fraîche 30%",290,2.5,3,30,"Œufs & laitages"],["Crème légère 15%",155,3,4,15,"Œufs & laitages"],["Beurre",745,0.7,0.6,82,"Œufs & laitages"],["Riz blanc",350,7,78,0.6,"Féculents & céréales"],["Riz complet",345,7.5,73,2.7,"Féculents & céréales"],["Riz basmati",350,8,77,0.9,"Féculents & céréales"],["Pâtes",355,12,72,1.5,"Féculents & céréales"],["Pâtes complètes",340,13,65,2.5,"Féculents & céréales"],["Semoule",350,12,73,1,"Féculents & céréales"],["Quinoa",370,14,64,6,"Féculents & céréales"],["Boulgour",345,12,70,1.5,"Féculents & céréales"],["Flocons d'avoine",375,13,60,7,"Féculents & céréales"],["Muesli",380,10,60,10,"Féculents & céréales"],["Pain complet",250,9,45,3,"Féculents & céréales"],["Pain blanc",265,8,52,2,"Féculents & céréales"],["Baguette",270,9,55,1.5,"Féculents & céréales"],["Pain de mie",280,8,50,5,"Féculents & céréales"],["Biscotte",390,11,75,5,"Féculents & céréales"],["Pomme de terre",80,2,17,0.2,"Féculents & céréales"],["Patate douce",86,1.6,20,0.1,"Féculents & céréales"],["Polenta",360,8,78,1.5,"Féculents & céréales"],["Sarrasin",345,13,65,3.5,"Féculents & céréales"],["Tortilla de blé",300,8,50,7,"Féculents & céréales"],["Lentilles vertes",350,25,50,1.5,"Féculents & céréales"],["Lentilles corail",345,24,52,1.5,"Féculents & céréales"],["Pois chiches",360,19,58,6,"Féculents & céréales"],["Haricots rouges",335,22,55,1.5,"Féculents & céréales"],["Haricots blancs",330,21,54,1.5,"Féculents & céréales"],["Pois cassés",340,23,55,1.2,"Féculents & céréales"],["Tofu nature",120,13,2,7,"Féculents & céréales"],["Tofu fumé",150,17,2,9,"Féculents & céréales"],["Tempeh",190,19,9,11,"Féculents & céréales"],["Edamame",125,11,9,5,"Féculents & céréales"],["Protéine de soja texturée",340,52,20,1,"Féculents & céréales"],["Tomate",18,0.9,3.5,0.2,"Légumes"],["Tomate cerise",20,1,4,0.2,"Légumes"],["Courgette",17,1.2,2.5,0.3,"Légumes"],["Aubergine",25,1,5,0.2,"Légumes"],["Poivron",26,1,5,0.3,"Légumes"],["Carotte",41,0.9,9,0.2,"Légumes"],["Brocoli",34,2.8,5,0.4,"Légumes"],["Chou-fleur",25,2,4,0.3,"Légumes"],["Épinards",23,2.9,1.5,0.4,"Légumes"],["Haricot vert",31,1.8,5,0.2,"Légumes"],["Petits pois",81,5,14,0.4,"Légumes"],["Poireau",29,1.5,6,0.3,"Légumes"],["Oignon",40,1.1,9,0.1,"Légumes"],["Ail",149,6,33,0.5,"Légumes"],["Champignon de Paris",22,3,1,0.3,"Légumes"],["Concombre",15,0.7,2,0.1,"Légumes"],["Salade verte",15,1.4,1.5,0.2,"Légumes"],["Mâche",21,2,2,0.4,"Légumes"],["Roquette",25,2.6,2,0.7,"Légumes"],["Endive",17,1,3,0.1,"Légumes"],["Chou vert",25,1.8,4,0.1,"Légumes"],["Chou rouge",31,1.4,6,0.2,"Légumes"],["Chou de Bruxelles",43,3.4,7,0.3,"Légumes"],["Chou frisé",49,4.3,6,0.9,"Légumes"],["Betterave",43,1.6,9,0.2,"Légumes"],["Céleri",16,0.7,3,0.2,"Légumes"],["Céleri-rave",42,1.5,9,0.3,"Légumes"],["Fenouil",31,1.2,6,0.2,"Légumes"],["Radis",16,0.7,3,0.1,"Légumes"],["Navet",28,0.9,6,0.1,"Légumes"],["Panais",75,1.2,17,0.3,"Légumes"],["Potiron",26,1,6,0.1,"Légumes"],["Courge butternut",45,1,11,0.1,"Légumes"],["Asperge",20,2.2,2,0.1,"Légumes"],["Artichaut",47,3.3,8,0.2,"Légumes"],["Maïs",86,3.2,19,1.2,"Légumes"],["Topinambour",73,2,17,0.1,"Légumes"],["Blette",19,1.8,2,0.2,"Légumes"],["Fève",88,8,11,0.7,"Légumes"],["Olive verte",145,1,4,15,"Légumes"],["Avocat",160,2,2,15,"Légumes"],["Cornichon",14,0.7,2,0.2,"Légumes"],["Pomme",52,0.3,14,0.2,"Fruits"],["Poire",57,0.4,15,0.1,"Fruits"],["Banane",89,1.1,23,0.3,"Fruits"],["Orange",47,0.9,12,0.1,"Fruits"],["Clémentine",53,0.9,13,0.2,"Fruits"],["Pamplemousse",42,0.8,11,0.1,"Fruits"],["Kiwi",61,1.1,15,0.5,"Fruits"],["Fraise",33,0.7,8,0.3,"Fruits"],["Framboise",52,1.2,12,0.7,"Fruits"],["Myrtille",57,0.7,14,0.3,"Fruits"],["Mûre",43,1.4,10,0.5,"Fruits"],["Cerise",63,1,16,0.2,"Fruits"],["Raisin",69,0.7,18,0.2,"Fruits"],["Pêche",39,0.9,10,0.3,"Fruits"],["Abricot",48,1.4,11,0.4,"Fruits"],["Prune",46,0.7,11,0.3,"Fruits"],["Figue",74,0.8,19,0.3,"Fruits"],["Melon",34,0.8,8,0.2,"Fruits"],["Pastèque",30,0.6,8,0.2,"Fruits"],["Ananas",50,0.5,13,0.1,"Fruits"],["Mangue",60,0.8,15,0.4,"Fruits"],["Grenade",83,1.7,19,1.2,"Fruits"],["Citron",29,1.1,9,0.3,"Fruits"],["Coing",57,0.4,15,0.1,"Fruits"],["Rhubarbe",21,0.9,4,0.2,"Fruits"],["Datte",280,2.5,68,0.4,"Fruits"],["Pruneau",240,2.2,64,0.4,"Fruits"],["Raisin sec",300,3,79,0.5,"Fruits"],["Abricot sec",240,3.4,63,0.5,"Fruits"],["Compote sans sucre",50,0.4,12,0.1,"Fruits"],["Amande",600,21,8,52,"Épicerie"],["Noix",690,15,7,65,"Épicerie"],["Noisette",630,15,7,61,"Épicerie"],["Noix de cajou",575,18,27,44,"Épicerie"],["Pistache",560,20,17,45,"Épicerie"],["Cacahuète",570,26,12,48,"Épicerie"],["Beurre de cacahuète",590,25,12,50,"Épicerie"],["Purée d'amande",620,21,7,55,"Épicerie"],["Graine de courge",560,30,10,49,"Épicerie"],["Graine de tournesol",580,21,11,51,"Épicerie"],["Graine de chia",490,17,42,31,"Épicerie"],["Graine de lin",530,18,29,42,"Épicerie"],["Sésame",570,18,23,50,"Épicerie"],["Tahini",600,17,21,53,"Épicerie"],["Huile d'olive",900,0,0,100,"Épicerie"],["Huile de colza",900,0,0,100,"Épicerie"],["Huile de coco",890,0,0,99,"Épicerie"],["Margarine",720,0.2,0.5,80,"Épicerie"],["Mayonnaise",680,1,2,75,"Épicerie"],["Ketchup",100,1,24,0.1,"Épicerie"],["Moutarde",65,4,5,3,"Épicerie"],["Sauce soja",60,6,6,0,"Épicerie"],["Vinaigre balsamique",90,0.5,17,0,"Épicerie"],["Bouillon cube",230,10,20,12,"Épicerie"],["Miel",300,0.3,80,0,"Épicerie"],["Sirop d'érable",260,0,67,0,"Épicerie"],["Sucre",400,0,100,0,"Épicerie"],["Confiture",250,0.5,60,0.1,"Épicerie"],["Chocolat noir 70%",560,9,33,42,"Épicerie"],["Chocolat au lait",535,7,58,30,"Épicerie"],["Cacao non sucré",230,20,15,11,"Épicerie"],["Farine de blé",345,10,72,1,"Épicerie"],["Whey protéine",380,78,7,5,"Épicerie"],["Lait d'amande",25,0.5,3,1.5,"Épicerie"],["Lait de soja",40,3.3,2,2,"Épicerie"],["Jus d'orange",45,0.7,10,0.1,"Épicerie"],["Houmous",230,7,15,16,"Épicerie"],["Pesto",450,5,6,45,"Épicerie"],["Lait de coco",190,2,3,19,"Épicerie"],["Tomate concassée",30,1.5,5,0.2,"Épicerie"],
 ["Bière blonde",43,0.5,3.6,0,"Boissons"],["Bière brune",50,0.5,5,0,"Boissons"],["Bière IPA",60,0.6,5.5,0,"Boissons"],["Bière sans alcool",25,0.4,5,0,"Boissons"],["Panaché",25,0.2,5,0,"Boissons"],["Cidre",45,0.2,5,0,"Boissons"],["Vin rouge",85,0.1,2.6,0,"Boissons"],["Vin blanc",82,0.1,2.6,0,"Boissons"],["Vin rosé",83,0.1,2.7,0,"Boissons"],["Champagne",80,0.2,1.4,0,"Boissons"],["Whisky",250,0,0,0,"Boissons"],["Vodka",231,0,0,0,"Boissons"],["Rhum",231,0,0,0,"Boissons"],["Pastis",280,0,2,0,"Boissons"],["Mojito",120,0,15,0,"Boissons"],["Spritz",110,0,12,0,"Boissons"],["Soda cola",42,0,10.6,0,"Boissons"],["Soda light",0.3,0,0,0,"Boissons"],["Limonade",40,0,10,0,"Boissons"],["Jus de pomme",46,0.1,11,0,"Boissons"],["Jus multifruits",48,0.4,11,0,"Boissons"],["Sirop dilué",30,0,7.5,0,"Boissons"],["Café noir",2,0.1,0,0,"Boissons"],["Café au lait",35,2,3,1.5,"Boissons"],["Thé",1,0,0,0,"Boissons"],["Chocolat chaud",80,3,12,2.5,"Boissons"],["Eau pétillante",0,0,0,0,"Boissons"],["Boisson énergisante",45,0,11,0,"Boissons"],["Smoothie",60,1,14,0.3,"Boissons"],["Kombucha",25,0,6,0,"Boissons"],["Pizza margherita",270,11,33,10,"Plats & snacks"],["Pizza 4 fromages",300,13,30,15,"Plats & snacks"],["Burger classique",250,13,20,13,"Plats & snacks"],["Cheeseburger",280,14,22,15,"Plats & snacks"],["Frites",310,3.5,41,15,"Plats & snacks"],["Kebab",215,15,15,11,"Plats & snacks"],["Sandwich jambon-beurre",250,10,30,10,"Plats & snacks"],["Croque-monsieur",280,14,22,15,"Plats & snacks"],["Quiche lorraine",290,10,22,18,"Plats & snacks"],["Lasagnes",135,8,12,6,"Plats & snacks"],["Couscous",130,7,17,3.5,"Plats & snacks"],["Paella",145,9,17,4,"Plats & snacks"],["Sushi (6 pièces)",145,6,28,1,"Plats & snacks"],["Nems",220,8,22,11,"Plats & snacks"],["Riz cantonais",165,6,24,5,"Plats & snacks"],["Pâtes bolognaise",130,7,16,4,"Plats & snacks"],["Pâtes carbonara",180,8,17,9,"Plats & snacks"],["Hachis parmentier",120,7,13,4,"Plats & snacks"],["Gratin dauphinois",160,3,14,10,"Plats & snacks"],["Salade César",180,9,6,13,"Plats & snacks"],["Soupe de légumes",40,1.5,7,0.5,"Plats & snacks"],["Omelette",165,11,1,13,"Plats & snacks"],["Raclette (portion)",350,22,1,29,"Plats & snacks"],["Tartiflette",190,8,12,12,"Plats & snacks"],["Chips",540,6,50,34,"Plats & snacks"],["Cacahuètes apéritif",600,25,10,50,"Plats & snacks"],["Biscuit apéritif",480,9,60,23,"Plats & snacks"],["Saucisson sec",450,25,1,38,"Plats & snacks"],["Croissant",405,8,45,21,"Plats & snacks"],["Pain au chocolat",420,7,45,23,"Plats & snacks"],["Brioche",350,8,50,13,"Plats & snacks"],["Cookie",480,5,60,24,"Plats & snacks"],["Biscuit sec",450,7,70,16,"Plats & snacks"],["Barre chocolatée",480,5,60,24,"Plats & snacks"],["Barre protéinée",350,30,35,9,"Plats & snacks"],["Crêpe sucrée",210,6,30,7,"Plats & snacks"],["Gaufre",290,7,40,12,"Plats & snacks"],["Glace (2 boules)",200,4,25,10,"Plats & snacks"],["Tarte aux pommes",240,3,35,10,"Plats & snacks"],["Fondant au chocolat",400,5,45,22,"Plats & snacks"],["Tiramisu",270,5,28,15,"Plats & snacks"],["Yaourt aux fruits",95,4,15,2,"Plats & snacks"],["Compote en gourde",65,0.3,15,0.1,"Plats & snacks"],["Popcorn",480,8,60,24,"Plats & snacks"],
-["Gyoza",220,8,25,10,"Plats & snacks"],["Raviolis",145,6,18,5,"Plats & snacks"],["Samoussa",280,8,28,15,"Plats & snacks"],["Nem au poulet",210,9,22,10,"Plats & snacks"],["Bo bun",130,8,17,3,"Plats & snacks"],["Pad thaï",160,7,22,5,"Plats & snacks"],["Ramen",110,6,14,3,"Plats & snacks"],["Poke bowl",120,8,14,3,"Plats & snacks"],["Curry de poulet",130,12,7,6,"Plats & snacks"],["Chili con carne",120,9,11,4,"Plats & snacks"],["Blanquette de veau",130,12,5,6,"Plats & snacks"],["Bœuf bourguignon",130,13,5,6,"Plats & snacks"],["Pot-au-feu",90,9,7,3,"Plats & snacks"],["Cassoulet",160,10,14,7,"Plats & snacks"],["Choucroute garnie",120,8,5,8,"Plats & snacks"],["Moussaka",140,8,9,8,"Plats & snacks"],["Ratatouille",60,1.5,7,3,"Plats & snacks"],["Gratin de courgettes",90,4,6,5,"Plats & snacks"],["Endives au jambon",110,7,6,6,"Plats & snacks"],["Croque-madame",300,15,22,17,"Plats & snacks"],["Cordon bleu",250,15,15,14,"Plats & snacks"],["Nuggets de poulet",250,14,16,14,"Plats & snacks"],["Poisson pané",200,13,15,10,"Plats & snacks"],["Fish and chips",230,12,22,11,"Plats & snacks"],["Brandade de morue",150,10,10,8,"Plats & snacks"],["Quenelle",180,7,17,9,"Plats & snacks"],["Galette de sarrasin",190,7,25,7,"Plats & snacks"],["Crêpe salée",150,6,18,6,"Plats & snacks"],["Tarte flambée",240,10,26,11,"Plats & snacks"],["Bruschetta",200,7,25,8,"Plats & snacks"],["Hot-dog",250,10,25,12,"Plats & snacks"],["Falafel",330,13,32,17,"Plats & snacks"],["Tacos français",280,12,25,15,"Plats & snacks"],["Wrap poulet",210,11,22,8,"Plats & snacks"],["Andouillette",290,18,2,24,"Viande"],["Boudin blanc",300,12,4,26,"Viande"],["Saucisse de Strasbourg",270,12,2,24,"Viande"],["Saucisson à l'ail",270,16,2,22,"Viande"],["Pâté de campagne",300,14,2,26,"Viande"],["Rillettes",400,17,0,37,"Viande"],["Terrine de volaille",250,15,3,20,"Viande"],["Andouille",220,20,2,15,"Viande"],["Purée de pommes de terre",90,2,13,3.5,"Plats & snacks"],["Purée de patate douce",100,1.5,17,3,"Plats & snacks"],["Gnocchis",170,4,32,2,"Plats & snacks"],["Frites au four",190,3,30,6,"Plats & snacks"],["Pommes noisettes",220,3,28,11,"Plats & snacks"],["Rösti",220,3,25,12,"Plats & snacks"],["Riz pilaf",150,3,28,3,"Plats & snacks"],["Taboulé",130,3,22,3,"Plats & snacks"],["Carottes râpées",80,1,8,5,"Plats & snacks"],["Céleri rémoulade",200,1.5,6,19,"Plats & snacks"],["Salade piémontaise",200,4,12,15,"Plats & snacks"],["Œufs mimosa",220,10,2,19,"Plats & snacks"],["Béchamel",130,4,8,9,"Plats & snacks"],["Sauce tomate cuisinée",60,1.5,7,2.5,"Plats & snacks"],["Flan pâtissier",145,4,20,5,"Plats & snacks"],["Crème brûlée",250,4,22,16,"Plats & snacks"],["Crème caramel",120,3,20,3,"Plats & snacks"],["Île flottante",120,4,18,3,"Plats & snacks"],["Riz au lait",130,4,20,4,"Plats & snacks"],["Mousse au chocolat",230,5,25,12,"Plats & snacks"],["Éclair au chocolat",270,5,32,13,"Plats & snacks"],["Paris-brest",380,7,32,24,"Plats & snacks"],["Chausson aux pommes",320,4,38,17,"Plats & snacks"],["Far breton",180,5,28,5,"Plats & snacks"],["Clafoutis",160,4,22,6,"Plats & snacks"],["Crumble",230,3,32,10,"Plats & snacks"],["Cheesecake",320,6,28,20,"Plats & snacks"],["Brownie",450,6,50,25,"Plats & snacks"],["Madeleine",430,6,50,22,"Plats & snacks"],["Quatre-quarts",420,6,50,21,"Plats & snacks"],["Pain perdu",220,6,28,9,"Plats & snacks"],["Churros",350,5,42,18,"Plats & snacks"],["Beignet",380,6,45,19,"Plats & snacks"],["Crêpe au sucre",210,5,32,7,"Plats & snacks"],["Salade de fruits",55,0.6,13,0.2,"Plats & snacks"],["Fromage blanc aux fruits",90,6,10,2,"Plats & snacks"]
+["Gyoza",220,8,25,10,"Plats & snacks"],["Raviolis",145,6,18,5,"Plats & snacks"],["Samoussa",280,8,28,15,"Plats & snacks"],["Nem au poulet",210,9,22,10,"Plats & snacks"],["Bo bun",130,8,17,3,"Plats & snacks"],["Pad thaï",160,7,22,5,"Plats & snacks"],["Ramen",110,6,14,3,"Plats & snacks"],["Poke bowl",120,8,14,3,"Plats & snacks"],["Curry de poulet",130,12,7,6,"Plats & snacks"],["Chili con carne",120,9,11,4,"Plats & snacks"],["Blanquette de veau",130,12,5,6,"Plats & snacks"],["Bœuf bourguignon",130,13,5,6,"Plats & snacks"],["Pot-au-feu",90,9,7,3,"Plats & snacks"],["Cassoulet",160,10,14,7,"Plats & snacks"],["Choucroute garnie",120,8,5,8,"Plats & snacks"],["Moussaka",140,8,9,8,"Plats & snacks"],["Ratatouille",60,1.5,7,3,"Plats & snacks"],["Gratin de courgettes",90,4,6,5,"Plats & snacks"],["Endives au jambon",110,7,6,6,"Plats & snacks"],["Croque-madame",300,15,22,17,"Plats & snacks"],["Cordon bleu",250,15,15,14,"Plats & snacks"],["Nuggets de poulet",250,14,16,14,"Plats & snacks"],["Poisson pané",200,13,15,10,"Plats & snacks"],["Fish and chips",230,12,22,11,"Plats & snacks"],["Brandade de morue",150,10,10,8,"Plats & snacks"],["Quenelle",180,7,17,9,"Plats & snacks"],["Galette de sarrasin",190,7,25,7,"Plats & snacks"],["Crêpe salée",150,6,18,6,"Plats & snacks"],["Tarte flambée",240,10,26,11,"Plats & snacks"],["Bruschetta",200,7,25,8,"Plats & snacks"],["Hot-dog",250,10,25,12,"Plats & snacks"],["Falafel",330,13,32,17,"Plats & snacks"],["Tacos français",280,12,25,15,"Plats & snacks"],["Wrap poulet",210,11,22,8,"Plats & snacks"],["Andouillette",290,18,2,24,"Viande"],["Boudin blanc",300,12,4,26,"Viande"],["Saucisse de Strasbourg",270,12,2,24,"Viande"],["Saucisson à l'ail",270,16,2,22,"Viande"],["Pâté de campagne",300,14,2,26,"Viande"],["Rillettes",400,17,0,37,"Viande"],["Terrine de volaille",250,15,3,20,"Viande"],["Andouille",220,20,2,15,"Viande"],["Purée de pommes de terre",90,2,13,3.5,"Plats & snacks"],["Purée de patate douce",100,1.5,17,3,"Plats & snacks"],["Gnocchis",170,4,32,2,"Plats & snacks"],["Frites au four",190,3,30,6,"Plats & snacks"],["Pommes noisettes",220,3,28,11,"Plats & snacks"],["Rösti",220,3,25,12,"Plats & snacks"],["Riz pilaf",150,3,28,3,"Plats & snacks"],["Taboulé",130,3,22,3,"Plats & snacks"],["Carottes râpées",80,1,8,5,"Plats & snacks"],["Céleri rémoulade",200,1.5,6,19,"Plats & snacks"],["Salade piémontaise",200,4,12,15,"Plats & snacks"],["Œufs mimosa",220,10,2,19,"Plats & snacks"],["Béchamel",130,4,8,9,"Plats & snacks"],["Sauce tomate cuisinée",60,1.5,7,2.5,"Plats & snacks"],["Flan pâtissier",145,4,20,5,"Plats & snacks"],["Crème brûlée",250,4,22,16,"Plats & snacks"],["Crème caramel",120,3,20,3,"Plats & snacks"],["Île flottante",120,4,18,3,"Plats & snacks"],["Riz au lait",130,4,20,4,"Plats & snacks"],["Mousse au chocolat",230,5,25,12,"Plats & snacks"],["Éclair au chocolat",270,5,32,13,"Plats & snacks"],["Paris-brest",380,7,32,24,"Plats & snacks"],["Chausson aux pommes",320,4,38,17,"Plats & snacks"],["Far breton",180,5,28,5,"Plats & snacks"],["Clafoutis",160,4,22,6,"Plats & snacks"],["Crumble",230,3,32,10,"Plats & snacks"],["Cheesecake",320,6,28,20,"Plats & snacks"],["Brownie",450,6,50,25,"Plats & snacks"],["Madeleine",430,6,50,22,"Plats & snacks"],["Quatre-quarts",420,6,50,21,"Plats & snacks"],["Pain perdu",220,6,28,9,"Plats & snacks"],["Churros",350,5,42,18,"Plats & snacks"],["Beignet",380,6,45,19,"Plats & snacks"],["Crêpe au sucre",210,5,32,7,"Plats & snacks"],["Salade de fruits",55,0.6,13,0.2,"Plats & snacks"],["Fromage blanc aux fruits",90,6,10,2,"Plats & snacks"],
+["Brie de Meaux",330,21,0.5,27,"Fromages"],["Coulommiers",300,19,1,24,"Fromages"],["Brie de Melun",320,20,1,26,"Fromages"],["Bleu d'Auvergne",350,20,1,30,"Fromages"],["Fourme d'Ambert",350,20,1,30,"Fromages"],["Bleu de Bresse",340,16,1,31,"Fromages"],["Bleu des Causses",345,20,1,29,"Fromages"],["Beaufort",400,26,1,33,"Fromages"],["Gruyère",415,30,0.4,32,"Fromages"],["Abondance",400,26,1,33,"Fromages"],["Cantal",370,24,1,30,"Fromages"],["Salers",380,24,1,31,"Fromages"],["Laguiole",375,24,1,30,"Fromages"],["Saint-Nectaire",340,22,1,28,"Fromages"],["Reblochon",330,20,1,27,"Fromages"],["Morbier",350,22,1,29,"Fromages"],["Munster",330,20,1,28,"Fromages"],["Époisses",320,18,1,27,"Fromages"],["Maroilles",340,21,1,28,"Fromages"],["Livarot",300,20,1,24,"Fromages"],["Pont-l'Évêque",305,20,1,25,"Fromages"],["Mimolette",360,25,1,28,"Fromages"],["Tomme de Savoie",300,22,1,23,"Fromages"],["Ossau-Iraty",400,24,1,34,"Fromages"],["Brebis des Pyrénées",390,24,1,32,"Fromages"],["Crottin de Chavignol",290,19,1,24,"Fromages"],["Sainte-Maure de Touraine",300,19,2,24,"Fromages"],["Valençay",300,19,2,24,"Fromages"],["Rocamadour",350,18,1,30,"Fromages"],["Banon",330,18,1,28,"Fromages"],["Bûche de chèvre",290,18,2,23,"Fromages"],["Saint-Marcellin",320,18,1,27,"Fromages"],["Chaource",340,17,1,30,"Fromages"],["Neufchâtel",330,18,1,28,"Fromages"],["Vacherin Mont d'Or",340,17,1,30,"Fromages"],["Cancoillotte",120,12,2,7,"Fromages"],["Boursin",400,7,3,40,"Fromages"],["Carré frais",145,9,4,11,"Fromages"],["Fromage à raclette",350,23,1,28,"Fromages"],["Tête de Moine",415,25,0.5,35,"Fromages"],["Saint-Paulin",300,23,1,23,"Fromages"],["Port-Salut",330,23,1,26,"Fromages"],["Chaumes",360,21,1,30,"Fromages"],["Rondelé ail et fines herbes",380,7,3,38,"Fromages"],["Cheddar affiné",410,25,0.1,34,"Fromages"],["Stilton",410,24,0.1,35,"Fromages"],["Red Leicester",400,24,0.1,33,"Fromages"],["Double Gloucester",405,25,0.1,34,"Fromages"],["Cheshire",380,24,0.1,31,"Fromages"],["Wensleydale",375,23,0.1,31,"Fromages"],["Lancashire",375,23,0.1,31,"Fromages"],["Caerphilly",375,23,0.1,31,"Fromages"],["Shropshire Blue",400,23,0.1,34,"Fromages"],["Cornish Yarg",380,24,0.1,31,"Fromages"],["Sage Derby",395,25,0.1,32,"Fromages"],["Parmigiano Reggiano",400,33,0.5,29,"Fromages"],["Grana Padano",390,33,0.5,29,"Fromages"],["Pecorino Romano",390,26,0.5,32,"Fromages"],["Mozzarella di bufala",280,17,1,24,"Fromages"],["Burrata",330,17,2,28,"Fromages"],["Gorgonzola",350,19,1,30,"Fromages"],["Taleggio",315,19,1,26,"Fromages"],["Fontina",390,25,2,31,"Fromages"],["Asiago",390,25,1,32,"Fromages"],["Provolone",350,25,2,27,"Fromages"],["Scamorza",330,25,2,25,"Fromages"],["Stracchino",300,18,1,25,"Fromages"],["Caciocavallo",380,27,2,30,"Fromages"],["Robiola",320,17,2,27,"Fromages"],["Halloumi",320,22,2,25,"Fromages"],["Kefalotyri",400,26,1,33,"Fromages"],["Kasseri",365,25,1,29,"Fromages"],["Graviera",390,27,1,31,"Fromages"],["Manouri",330,12,3,30,"Fromages"],["Mizithra",320,18,3,26,"Fromages"],["Anthotyro",240,14,4,19,"Fromages"],["Metsovone",350,24,2,28,"Fromages"],["Feta AOP",265,14,4,21,"Fromages"]
 ];
 
 /* index de recherche */
@@ -852,18 +875,31 @@ function toks(t){
 const flat=t=>norm(t).replace(/[^a-z0-9]+/g," ").trim();
 const FOOD=FOODS.map((f,i)=>({i,n:f[0],k:f[1],p:f[2],g:f[3],l:f[4],c:f[5],
   s:norm(f[0]),f:flat(f[0]),w:toks(f[0])}));
-function searchFood(q){
-  const n=flat(q);
-  if(!n) return FOOD.slice(0,40);
+const RAYONS=["Plats & snacks","Viande","Poisson","Fromages","Œufs & laitages",
+  "Féculents & céréales","Légumes","Fruits","Boissons","Épicerie"];
+const RAYON_IC={"Plats & snacks":"🍽️","Viande":"🥩","Poisson":"🐟","Fromages":"🧀","Œufs & laitages":"🥚",
+  "Féculents & céréales":"🌾","Légumes":"🥦","Fruits":"🍎","Boissons":"🥤","Épicerie":"🫙"};
+function searchFood(q,cat){
+  const pool=cat?FOOD.filter(f=>f.c===cat):FOOD;
+  const n=flat(q||"");
+  if(!n) return cat?pool:pool.slice(0,60);   // un rayon choisi : on montre tout
   const words=n.split(" ");
-  return FOOD
+  return pool
     .map(f=>{
       if(f.f.startsWith(n)) return {f,s:3};
       if(f.f.includes(n)) return {f,s:2};
       if(words.every(w=>f.f.includes(w))) return {f,s:1};
       return null;
     })
-    .filter(Boolean).sort((a,b)=>b.s-a.s).slice(0,40).map(x=>x.f);
+    .filter(Boolean).sort((a,b)=>b.s-a.s).slice(0,60).map(x=>x.f);
+}
+/* barre de filtres par rayon */
+function rayonBar(active,attr){
+  return `<div class="months" style="margin-bottom:11px">
+    <button class="mo ${!active?'on':''}" data-${attr}="">Tout</button>
+    ${RAYONS.map(r=>`<button class="mo ${active===r?'on':''}" data-${attr}="${esc(r)}">
+      ${RAYON_IC[r]} ${r==="Plats & snacks"?"Plats":r==="Œufs & laitages"?"Laitages":
+        r==="Féculents & céréales"?"Féculents":r}</button>`).join("")}</div>`;
 }
 /* termes génériques du plan → aliment de référence */
 const SYN={"poisson blanc":"Cabillaud","poisson":"Cabillaud","poisson gras":"Saumon frais",
@@ -990,6 +1026,7 @@ function defaultG(n){
   if(u.t==="u") return toG(1,u);
   if(u.t==="cl") return toG(10,u);
   const f=FOOD.find(x=>x.n===n);
+  if(f&&f.c==="Fromages") return f.k<200?100:30;
   if(f&&f.k>=500) return 20;      // oléagineux, purées : portion réaliste
   if(f&&f.k>=300) return 60;      // féculents secs, fromages
   return 100;
@@ -1123,9 +1160,9 @@ const kcalOfDate=d=>Math.round(logTotals(log[d]||[]).k);
 /* cocher un repas = l'enregistrer dans le journal du bon jour */
 function toggleMealLog(d,i){
   const key=mkey(d,i), date=dateOfDay(d), on=!meals[key];
-  meals[key]=on; S.set("meals",meals);
   if(on){
-    const r=dayInfo(d).r, mo=mealOf(d,i);
+    const r=dayInfo(d).r, mo=mealOf(d,i);   /* avant de cocher */
+    meals[key]=true; S.set("meals",meals);
     mo.items.forEach(x=>{
       const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
       const f=findFood(nm);
@@ -1133,6 +1170,7 @@ function toggleMealLog(d,i){
       if(f) logAdd(f.n,g,key,date);
     });
   }else{
+    meals[key]=false; S.set("meals",meals);
     const a=(log[date]||[]).filter(x=>x.src!==key);
     if(a.length) log[date]=a; else delete log[date];
     S.set("log",log);
@@ -1203,7 +1241,14 @@ const itemKcal=x=>Math.round(x.g*x.k/100);
 
 /* repas affiché : version perso si elle existe, sinon le plan de saison */
 function mealOf(d,i){
-  const cu=custom[mkey(d,i)];
+  const key=mkey(d,i);
+  /* repas déjà mangé : on montre exactement ce qui est parti au journal */
+  if(meals[key]){
+    const e=(log[dateOfDay(d)]||[]).filter(x=>x.src===key);
+    if(e.length) return {custom:false, eaten:true,
+      items:e.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x)}))};
+  }
+  const cu=custom[key];
   if(cu) return {custom:true, items:cu.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x)})), raw:cu};
   return {custom:false, items:mealItems(d,i)};
 }
@@ -1212,16 +1257,24 @@ const sumK=a=>a.reduce((s,x)=>s+(x.k||0),0);
 /* équilibrage : les repas non modifiés absorbent le reste de la journée */
 function dayInfo(d){
   const c=calc();
-  let fixed=0, rest=0, nCustom=0;
+  const date=dateOfDay(d);
+  /* déjà avalé ce jour-là : repas cochés + ajouts libres (bière, snack…) */
+  const eaten=Math.round(logTotals(log[date]||[]).k);
+  let fixed=0, rest=0, nCustom=0, nLeft=0;
   MEALS[d].forEach((m,i)=>{
+    if(meals[mkey(d,i)]) return;            // ce repas est déjà mangé et compté
     const mo=mealOf(d,i), k=sumK(mo.items);
+    nLeft++;
     if(mo.custom){ fixed+=k; nCustom++; } else rest+=k;
   });
-  const target=c?c.target:fixed+rest;
-  let r = rest>0 ? (target-fixed)/rest : 1;
+  const target=c?c.target:eaten+fixed+rest;
+  /* ce qu'il reste à répartir sur les repas non encore mangés */
+  const left=target-eaten-fixed;
+  let r = rest>0 ? left/rest : 1;
   const raw=r;
   r=Math.max(0.3,Math.min(2.5,r));
-  return {target,fixed,rest,r,nCustom,tight:raw<0.45,over:raw>2.4,all:nCustom===MEALS[d].length};
+  return {target,eaten,fixed,rest,left,r,nCustom,nLeft,
+    tight:rest>0&&raw<0.45, over:rest>0&&raw>2.4, all:nLeft===0};
 }
 
 /* ---------- PROFIL & CALCUL DES BESOINS ---------- */
@@ -1288,7 +1341,7 @@ function scaleQ(q,r){
   });
 }
 const scaleK=(k,r)=>Math.round(k*r/5)*5;
-let tab=null, openDay=null, openEx=null, edit=null, jq="";
+let tab=null, openDay=null, openEx=null, edit=null, jq="", jcat="";
 
 const DAYMAP=[6,0,1,2,3,4,5];
 const TODAY=DAYS[DAYMAP[new Date().getDay()]];
@@ -1297,7 +1350,7 @@ openDay=TODAY;
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 function kcalOf(d,i,r){
   const mo=mealOf(d,i);
-  if(mo.custom) return sumK(mo.items);
+  if(mo.custom||mo.eaten) return sumK(mo.items);
   return mo.items.reduce((s,x)=>s+scaleK(x.k||0,r===undefined?1:r),0);
 }
 const dayKcal=d=>{ const r=ratio(d); return MEALS[d].map((m,i)=>kcalOf(d,i,r)).reduce((a,b)=>a+b,0); };
@@ -1521,20 +1574,25 @@ function vRepas(){
       <span class="between" style="gap:8px"><span class="kcal">${tot} kcal</span>
       <span class="pl">${op?'–':'+'}</span></span></div>`;
     if(op){
-      if(D.tight) h+=`<div class="alert">Tes repas modifiés pèsent déjà lourd :
-        les autres ont été réduits au minimum. Allège-les ou augmente ton objectif.</div>`;
+      if(D.eaten>0) h+=`<div class="eaten">Déjà mangé aujourd'hui :
+        <b>${D.eaten} kcal</b>${D.all?"":` — les ${D.nLeft} repas restants sont calés sur les
+        ${Math.max(0,Math.round(D.left+D.fixed))} kcal disponibles.`}</div>`;
+      if(D.tight) h+=`<div class="alert">Il ne reste presque plus de marge :
+        les repas suivants ont été réduits au minimum. Une collation légère serait plus adaptée.</div>`;
       if(D.over) h+=`<div class="alert">Il reste beaucoup de calories à répartir :
-        les autres repas ont été augmentés au maximum.</div>`;
+        les repas suivants ont été augmentés au maximum.</div>`;
       MEALS[d].forEach((m,i)=>{
         const k=mkey(d,i), on=meals[k], mo=mealOf(d,i);
         h+=`<div class="row"><span class="box ${on?'on':''}" data-m="${k}"></span><span class="grow">
           <span class="between" style="margin-bottom:6px">
             <span><span class="mtype">${esc(m.type)}</span>
-            ${mo.custom?'<span class="pill">perso</span>':''}</span>
-            <span class="between" style="gap:9px"><span class="kcal">~${kcalOf(d,i,D.r)} kcal</span>
+            ${mo.custom?'<span class="pill">perso</span>':''}${mo.eaten?'<span class="pill eat">mangé</span>':''}</span>
+            <span class="between" style="gap:7px"><span class="kcal">~${kcalOf(d,i,D.r)} kcal</span>
+            ${mo.eaten?"":`<button class="edit vide" data-empty="${k}">Vider</button>`}
             <button class="edit" data-edit="${k}">Modifier</button></span></span>`;
         mo.items.forEach(g=>{
-          const q=mo.custom?g.q:scaleQ(g.q,D.r), kk=mo.custom?g.k:scaleK(g.k,D.r);
+          const fig=mo.custom||mo.eaten;
+          const q=fig?g.q:scaleQ(g.q,D.r), kk=fig?g.k:scaleK(g.k,D.r);
           const dot=g.ok?'<span class="dot ok">✓</span>':g.miss?'<span class="dot no">!</span>':'';
           h+=`<span class="between" style="margin-top:2px">
             <span class="nm ${on?'done':''} ${g.miss?'missing':''}">${dot}${esc(g.n)}</span>
@@ -1575,9 +1633,14 @@ function vEdit(){
     <div class="kv"><span>Lipides</span><span style="color:var(--cyan)">${Math.round(L_)} g</span></div>
   </div>`;
 
-  h+=`<div class="sechead"><h3>Composition</h3><span>${edit.draft.length} aliments</span></div>`;
+  h+=`<div class="sechead"><h3>Composition</h3>
+    <span class="between" style="gap:7px">
+      ${edit.draft.length?`<button class="edit vide" data-clearall="1">Tout vider</button>`:""}
+      <button class="edit" data-reload="1">Repartir du plan</button>
+    </span></div>`;
   if(!edit.draft.length){
-    h+=`<div class="empty">Repas vide. Ajoute un aliment ci-dessous.</div>`;
+    h+=`<div class="empty">Repas vide.<br>Compose le tien ci-dessous, ou enregistre tel quel
+      pour sauter ce repas — les autres repas du jour récupéreront les calories.</div>`;
   }else{
     edit.draft.forEach((x,j)=>{
       const u=unitOf(x.n), v=disp(x.g,u);
@@ -1599,9 +1662,10 @@ function vEdit(){
   }
 
   h+=`<div class="sechead"><h3>Ajouter un aliment</h3><span>${FOOD.length} référencés</span></div>
-    <div class="wbar"><input id="fq" type="text" placeholder="Rechercher : poulet, riz, pomme…"
+    <div class="wbar"><input id="fq" type="text" placeholder="Rechercher : gyoza, poulet, riz…"
       autocomplete="off" value="${esc(edit.q||"")}"></div>
-    <div id="fres">${foodResults(edit.q||"")}</div>`;
+    ${rayonBar(edit.cat,"fcat")}
+    <div id="fres">${foodResults(edit.q||"",edit.cat)}</div>`;
 
   h+=`<div class="savebar"><button class="save" data-savemeal="1">Enregistrer le repas</button>
     <div class="rowbtn" style="margin-top:10px">
@@ -1611,9 +1675,9 @@ function vEdit(){
   return h;
 }
 
-function foodResults(q){
-  const r=searchFood(q);
-  if(!r.length) return `<div class="empty">Aucun aliment trouvé pour « ${esc(q)} ».</div>`;
+function foodResults(q,cat){
+  const r=searchFood(q,cat);
+  if(!r.length) return `<div class="empty">Aucun aliment trouvé.</div>`;
   let h=`<div class="chips">`;
   r.forEach(f=>{
     h+=`<button class="chip add" data-food="${f.i}">
@@ -1829,10 +1893,39 @@ function vJournal(){
   });
   h+=`</div>`;
 
+  /* --- suggestions selon ce qu'il reste --- */
+  if(left>=200){
+    sugg=buildSuggestions(left);
+    h+=`<div class="sechead"><h3>Que manger ?</h3>
+      <span>pour ${left} kcal restantes</span></div>`;
+    h+=`<p class="note">${left>1250
+      ? `Il te reste ${left} kcal, de quoi tenir deux repas. Voici des idées pour un repas (~${mealTarget(left)} kcal).`
+      : `Propositions calées sur ton reste de la journée.`}${adapt?" Uniquement avec ce que tu as acheté.":""}</p>`;
+    sugg.forEach((sg,n)=>{
+      h+=`<div class="sg">
+        <div class="between" style="margin-bottom:9px">
+          <span class="sg-t">${esc(sg.t)}</span>
+          <span class="sg-k">${Math.round(sg.tot)} kcal</span></div>
+        <ul class="plain">`;
+      sg.items.forEach(x=>{
+        const u=unitOf(x.n), v=disp(x.g,u);
+        h+=`<li class="between sg-i"><span>${esc(x.n)}</span>
+          <span class="qty">${v}${unitLbl(v,u)}</span></li>`;
+      });
+      h+=`</ul><button class="mini sg-b" data-sugg="${n}">Ajouter au journal</button></div>`;
+    });
+    h+=`<button class="mini" id="sgNew" style="margin-bottom:6px">Autres propositions</button>`;
+  }else if(left>0){
+    h+=`<div class="sechead"><h3>Que manger ?</h3><span>${left} kcal</span></div>
+      <div class="info">Il te reste peu de marge. Une collation légère suffira :
+      un fruit, un yaourt nature ou quelques crudités.</div>`;
+  }
+
   h+=`<div class="sechead"><h3>Chercher</h3><span>${FOOD.length} aliments</span></div>
-    <div class="wbar"><input id="jq" type="text" placeholder="bière, pizza, pomme…"
+    <div class="wbar"><input id="jq" type="text" placeholder="bière, gyoza, flan…"
       autocomplete="off" value="${esc(jq||"")}"></div>
-    <div id="jres">${jq?logResults(jq):""}</div>`;
+    ${rayonBar(jcat,"jcat")}
+    <div id="jres">${(jq||jcat)?logResults(jq,jcat):""}</div>`;
 
   h+=`<div class="sechead"><h3>Ma journée</h3><span>${a.length} entrées</span></div>`;
   if(!a.length){
@@ -1869,11 +1962,11 @@ function vJournal(){
   return h+`</div>`;
 }
 
-function logResults(q){
-  const r=searchFood(q);
+function logResults(q,cat){
+  const r=searchFood(q,cat);
   if(!r.length) return `<div class="empty">Aucun aliment trouvé.</div>`;
   let h=`<div class="chips">`;
-  r.slice(0,24).forEach(f=>{
+  r.forEach(f=>{
     const g=defaultG(f.n), u=unitOf(f.n), v=disp(g,u);
     h+=`<button class="chip add" data-log="${esc(f.n)}">
       <span class="plus">+</span><span><span class="cn">${esc(f.n)}</span>
@@ -1901,6 +1994,112 @@ function migrateMeals(){
     });
   });
   S.set("migMeals",true);
+}
+
+
+/* ---------- SUGGESTIONS DE REPAS SELON LES CALORIES RESTANTES ---------- */
+let sSeed=0, sugg=[];
+const byCat=c=>FOOD.filter(f=>f.c===c);
+/* si « cuisiner avec mes courses » est actif, on ne propose que ce qui est dispo */
+function poolOf(cats,filt){
+  let p=FOOD.filter(f=>cats.includes(f.c)&&(!filt||filt(f)));
+  if(adapt){
+    const have=new Set(list.filter(x=>x.done).map(x=>norm(x.n)));
+    const av=p.filter(f=>have.has(norm(f.n)));
+    if(av.length) return av;
+  }
+  return p;
+}
+const rot=(arr,i)=>arr.length?arr[Math.abs(i)%arr.length]:null;
+const r10=g=>Math.max(20,Math.round(g/10)*10);
+
+/* aliments à ne pas servir en plat salé */
+const SWEET=/avoine|muesli|biscotte|pain de mie|corn flakes|brioche|farine|polenta/i;
+/* plafonds de portion : on ne sert pas 600 g de viande */
+const capP=g=>Math.min(300,g);
+const capS=(g,f)=>{
+  const u=unitOf(f.n);
+  if(u.t==="u") return Math.min(3*u.w,g);      // pas 7 tranches de pain
+  return Math.min(f.k>=300?150:400,g);
+};
+/* si le compte n'y est pas, on complète avec un fruit puis un peu de fromage */
+function fill(items,T,i){
+  let tot=items.reduce((a,x)=>a+x.g*x.k/100,0);
+  if(T-tot>120){
+    const F=poolOf(["Fruits"],f=>f.k<=90);
+    const fr=rot(F,i*31+7);
+    if(fr){ const g=Math.min(250,r10((T-tot)*0.7/(fr.k/100)));
+      items.push({n:fr.n,g,k:fr.k,p:fr.p,gl:fr.g,l:fr.l}); tot+=g*fr.k/100; }
+  }
+  if(T-tot>140){
+    const C=poolOf(["Fromages"],f=>f.k>=250);
+    const c=rot(C,i*37+3);
+    if(c){ const g=Math.min(60,r10((T-tot)/(c.k/100)));
+      items.push({n:c.n,g,k:c.k,p:c.p,gl:c.g,l:c.l}); }
+  }
+  return items;
+}
+
+/* une assiette : protéine + féculent + légume + un filet d'huile */
+function plate(T,i){
+  const P=poolOf(["Viande","Poisson"],f=>f.k<=220&&f.p>=15);
+  const S=poolOf(["Féculents & céréales"],f=>f.k>=80&&!SWEET.test(f.n));
+  const V=poolOf(["Légumes"],f=>f.k<=60);
+  const p=rot(P,i*7+1), st=rot(S,i*5+3), v=rot(V,i*3+2);
+  if(!p||!st||!v) return null;
+  const oil=FOOD.find(f=>f.n==="Huile d'olive");
+  const vg=200, og=T>600?10:5;
+  const rest=T-(vg*v.k/100)-(og*oil.k/100);
+  let items=[{n:p.n,g:capP(r10(rest*0.45/(p.k/100))),k:p.k,p:p.p,gl:p.g,l:p.l},
+             {n:st.n,g:capS(r10(rest*0.55/(st.k/100)),st),k:st.k,p:st.p,gl:st.g,l:st.l},
+             {n:v.n,g:vg,k:v.k,p:v.p,gl:v.g,l:v.l},
+             {n:oil.n,g:og,k:oil.k,p:oil.p,gl:oil.g,l:oil.l}];
+  items=fill(items,T,i);
+  return {t:"Assiette complète",items,tot:items.reduce((a,x)=>a+x.g*x.k/100,0)};
+}
+
+/* une assiette froide, plus légère */
+function bowl(T,i){
+  const P=poolOf(["Poisson","Œufs & laitages","Viande"],f=>f.k<=180&&f.p>=10);
+  const S=poolOf(["Féculents & céréales"],f=>f.k>=300&&!SWEET.test(f.n));
+  const V=poolOf(["Légumes"],f=>f.k<=45);
+  const F=poolOf(["Fromages"],f=>f.k<=300);
+  const p=rot(P,i*11+4), st=rot(S,i*13+6), v=rot(V,i*17+5), fr=rot(F,i*19+2);
+  if(!p||!st||!v) return null;
+  let items=[{n:v.n,g:200,k:v.k,p:v.p,gl:v.g,l:v.l}];
+  const base=200*v.k/100+(fr?30*fr.k/100:0);
+  const rest=Math.max(120,T-base);
+  items.push({n:p.n,g:capP(r10(rest*0.55/(p.k/100))),k:p.k,p:p.p,gl:p.g,l:p.l});
+  items.push({n:st.n,g:capS(r10(rest*0.45/(st.k/100)),st),k:st.k,p:st.p,gl:st.g,l:st.l});
+  if(fr) items.push({n:fr.n,g:30,k:fr.k,p:fr.p,gl:fr.g,l:fr.l});
+  items=fill(items,T,i);
+  return {t:"Assiette froide",items,tot:items.reduce((a,x)=>a+x.g*x.k/100,0)};
+}
+
+/* un plat tout prêt de la base qui rentre dans le budget */
+function readyDish(T,i){
+  const ok=FOOD.filter(f=>f.c==="Plats & snacks").map(f=>{
+    const g=defaultG(f.n); return {f,g,k:g*f.k/100};
+  }).filter(x=>x.k<=T*1.02&&x.k>=T*0.45);
+  const ch=rot(ok,i*23+9);
+  if(!ch) return null;
+  let items=[{n:ch.f.n,g:ch.g,k:ch.f.k,p:ch.f.p,gl:ch.f.g,l:ch.f.l}];
+  if(T-ch.k>90){
+    const V=poolOf(["Légumes"],f=>f.k<=45);
+    const v=rot(V,i*29+1);
+    if(v) items.push({n:v.n,g:200,k:v.k,p:v.p,gl:v.g,l:v.l});
+  }
+  items=fill(items,T,i);
+  return {t:"Plat tout prêt",items,tot:items.reduce((a,x)=>a+x.g*x.k/100,0)};
+}
+
+const mealTarget=T=>Math.min(T,1100);
+function buildSuggestions(T0){
+  const T=mealTarget(T0);
+  const out=[];
+  [plate(T,sSeed),readyDish(T,sSeed),bowl(T,sSeed),plate(T,sSeed+1)]
+    .forEach(x=>{ if(x&&!out.some(o=>o.items[0].n===x.items[0].n)) out.push(x); });
+  return out.slice(0,4);
 }
 
 /* ---- navigation ---- */
@@ -1943,7 +2142,7 @@ function toCart(items){
 }
 const home=document.getElementById("home"), page=document.getElementById("page");
 
-function go(k){
+function go(k,keep){
   tab=k;
   const p=pcts();
   document.getElementById("ptitle").textContent = k==="edit"
@@ -1953,17 +2152,33 @@ function go(k){
     k==="edit"?edit.d:"";
   document.getElementById("app").innerHTML=VIEWS[k]();
   home.style.display="none"; page.style.display="block";
-  window.scrollTo(0,0);
+  if(!keep) window.scrollTo(0,0);
 }
 function goHome(){
   tab=null; renderHome();
   page.style.display="none"; home.style.display="block";
   window.scrollTo(0,0);
 }
-function refresh(){ if(tab) go(tab); else renderHome(); }
+function refresh(){
+  const y=window.scrollY;
+  const a=document.activeElement;
+  let sel=null;
+  if(a&&a.dataset){
+    if(a.dataset.gi!==undefined) sel='[data-gi="'+a.dataset.gi+'"]';
+    else if(a.dataset.lgi!==undefined) sel='[data-lgi="'+a.dataset.lgi+'"]';
+    else if(a.id) sel="#"+a.id;
+  }
+  if(tab) go(tab,true); else renderHome();
+  window.scrollTo(0,y);
+  if(sel){
+    const el=document.querySelector(sel);
+    if(el&&el.focus){ el.focus({preventScroll:true});
+      if(el.setSelectionRange){ const n=el.value.length; try{ el.setSelectionRange(n,n); }catch(e){} } }
+  }
+}
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-food],[data-di],[data-g],[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -1995,8 +2210,17 @@ document.addEventListener("click",e=>{
     }));
     S.set("list",list); return refresh();
   }
+  if(t.dataset.fcat!==undefined&&edit){ edit.cat=t.dataset.fcat; return refresh(); }
+  if(t.dataset.jcat!==undefined){ jcat=t.dataset.jcat; return refresh(); }
   if(t.dataset.jday){ logDate=t.dataset.jday; return go("journal"); }
   if(t.dataset.log){ logAdd(t.dataset.log,defaultG(t.dataset.log)); return refresh(); }
+  if(t.dataset.sugg!==undefined){
+    const sg=sugg[+t.dataset.sugg];
+    if(sg){ sg.items.forEach(x=>logAdd(x.n,x.g)); refresh();
+      return toast(sg.t+" ajouté ("+Math.round(sg.tot)+" kcal)"); }
+    return;
+  }
+  if(t.id==="sgNew"){ sSeed++; return refresh(); }
   if(t.dataset.lrm!==undefined){ const a=dayLog().slice(); a.splice(+t.dataset.lrm,1); saveLog(a); return refresh(); }
   if(t.dataset.lg){
     const [j,dv]=t.dataset.lg.split(":"), a=dayLog().slice(), x=a[+j], u=unitOf(x.n);
@@ -2023,6 +2247,20 @@ document.addEventListener("click",e=>{
       mealItems(d,i).forEach(x=>{ if(x.miss) mi.push({n:x.n,q:scaleQ(x.q,r)}); }); });
     const n=toCart(mi);
     return toast(n?n+" article"+(n>1?"s":"")+" ajouté"+(n>1?"s":"")+" à ta liste":"Rien ne manque");
+  }
+  if(t.dataset.empty){
+    const key=t.dataset.empty, dd=key.split("-")[0];
+    custom[key]=[]; S.set("custom",custom);
+    autoSync(dd); refresh();
+    return toast("Repas vidé — les autres se rééquilibrent");
+  }
+  if(t.dataset.clearall){ edit.draft=[]; return refresh(); }
+  if(t.dataset.reload){
+    const dd=edit.d, ii=edit.i, had=custom[mkey(dd,ii)];
+    delete custom[mkey(dd,ii)]; S.set("custom",custom);
+    edit=null; openEditor(dd,ii);
+    if(had) autoSync(dd);
+    return;
   }
   if(t.dataset.edit){ const [dd,ii]=t.dataset.edit.split("-"); return openEditor(dd,+ii); }
   if(t.dataset.food!==undefined){
@@ -2112,13 +2350,13 @@ document.addEventListener("input",e=>{
   if(e.target.id==="jq"){
     jq=e.target.value;
     const box=document.getElementById("jres");
-    if(box) box.innerHTML=jq?logResults(jq):"";
+    if(box) box.innerHTML=(jq||jcat)?logResults(jq,jcat):"";
     return;
   }
   if(e.target.id==="fq"&&edit){
     edit.q=e.target.value;
     const box=document.getElementById("fres");
-    if(box) box.innerHTML=foodResults(edit.q);
+    if(box) box.innerHTML=foodResults(edit.q,edit.cat);
   }
 });
 document.addEventListener("change",e=>{
