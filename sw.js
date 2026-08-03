@@ -1,4 +1,4 @@
-const CACHE = "vertigo-v30";
+const CACHE = "vertigo-v31";
 const FILES = [
   "./",
   "./index.html",
@@ -26,7 +26,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   // Requêtes de spots : toujours en direct, jamais de cache.
-  if (url.hostname.includes("overpass")) return;
+  if (url.hostname.includes("overpass")||url.hostname.includes("nominatim")) return;
   const isApp = e.request.mode === "navigate" || url.pathname.endsWith("index.html");
 
   // L'application : on va chercher la dernière version en ligne d'abord,

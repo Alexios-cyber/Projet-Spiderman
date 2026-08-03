@@ -771,7 +771,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
-const APP_VERSION="30";
+const APP_VERSION="31";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -2400,7 +2400,8 @@ function milestones(){
 
 /* ---------- SPOTS DE STREET WORKOUT (OpenStreetMap) ---------- */
 let spots=S.get("spots",null);          // dernier résultat, consultable hors ligne
-let spotState={loading:false,err:null,radius:3000};
+let spotState={loading:false,err:null,radius:3000,q:"",results:null,geo:false};
+let mapCenter=S.get("mapCenter",null);   // dernier point consulté
 let LMap=null, LLayer=null;
 
 /* Leaflet chargé seulement quand on ouvre la page */
@@ -2476,16 +2477,45 @@ function fetchSpots(lat,lon,rad){
       return {lat,lon,rad,at:Date.now(),list};
     });
 }
+
+/* recherche d'un lieu par son nom (Nominatim / OpenStreetMap) */
+function geocode(q){
+  const u="https://nominatim.openstreetmap.org/search?format=json&limit=5"+
+    "&accept-language=fr&q="+encodeURIComponent(q);
+  return fetch(u,{headers:{"Accept":"application/json"}})
+    .then(r=>{ if(!r.ok) throw new Error("geo"); return r.json(); })
+    .then(a=>a.map(x=>({
+      n:x.display_name.split(",").slice(0,3).join(",").trim(),
+      lat:+x.lat, lon:+x.lon })));
+}
+function doGeocode(){
+  const q=(spotState.q||"").trim();
+  if(q.length<3){ spotState.err="Tape au moins 3 lettres."; return refresh(); }
+  spotState.geo=true; spotState.err=null; spotState.results=null; refresh();
+  geocode(q)
+    .then(r=>{ spotState.geo=false;
+      spotState.results=r;
+      if(!r.length) spotState.err="Aucun lieu trouvé pour « "+q+" ».";
+      refresh(); })
+    .catch(()=>{ spotState.geo=false;
+      spotState.err="Recherche indisponible. Vérifie ta connexion."; refresh(); });
+}
+/* lance la recherche de spots autour d'un point donné */
+function searchAt(lat,lon,label){
+  spotState.loading=true; spotState.err=null; spotState.results=null; refresh();
+  mapCenter={lat,lon,label}; S.set("mapCenter",mapCenter);
+  fetchSpots(lat,lon,spotState.radius)
+    .then(r=>{ r.place=label; spots=r; S.set("spots",spots);
+      spotState.loading=false; refresh(); })
+    .catch(()=>{ spotState.loading=false;
+      spotState.err="OpenStreetMap n'a pas répondu. Réessaie dans un instant."; refresh(); });
+}
 function findSpots(){
   if(!navigator.geolocation){ spotState.err="Géolocalisation indisponible sur cet appareil."; return refresh(); }
   spotState.loading=true; spotState.err=null; refresh();
   navigator.geolocation.getCurrentPosition(
-    p=>{
-      fetchSpots(p.coords.latitude,p.coords.longitude,spotState.radius)
-        .then(r=>{ spots=r; S.set("spots",spots); spotState.loading=false; refresh(); })
-        .catch(()=>{ spotState.loading=false;
-          spotState.err="OpenStreetMap n'a pas répondu. Réessaie dans un instant."; refresh(); });
-    },
+    p=>{ spotState.loading=false;
+      searchAt(p.coords.latitude,p.coords.longitude,"Ma position"); },
     e=>{ spotState.loading=false;
       spotState.err = e.code===1
         ? "Autorise la localisation dans les réglages de ton navigateur pour voir les spots autour de toi."
@@ -2497,47 +2527,73 @@ function findSpots(){
 
 /* la carte est dessinée après le rendu HTML */
 function drawMap(){
-  if(!spots||!spots.list.length) return;
   loadLeaflet().then(()=>{
     const el=document.getElementById("map");
     if(!el||!window.L) return;
     if(LMap){ LMap.remove(); LMap=null; }
-    LMap=L.map(el,{scrollWheelZoom:false}).setView([spots.lat,spots.lon],14);
+    const ctr = spots ? [spots.lat,spots.lon]
+              : mapCenter ? [mapCenter.lat,mapCenter.lon]
+              : [48.8566,2.3522];
+    LMap=L.map(el,{scrollWheelZoom:false}).setView(ctr, spots?14:12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {maxZoom:19,attribution:"© OpenStreetMap"}).addTo(LMap);
-    L.circleMarker([spots.lat,spots.lon],{radius:7,color:"#5B54B8",fillColor:"#5B54B8",
-      fillOpacity:.9,weight:2}).addTo(LMap).bindPopup("Tu es ici");
-    const b=[[spots.lat,spots.lon]];
-    spots.list.forEach(sp=>{
-      L.circleMarker([sp.lat,sp.lon],{radius:8,color:"#D97583",fillColor:"#D97583",
-        fillOpacity:.75,weight:2}).addTo(LMap)
-        .bindPopup(`<b>${sp.n}</b><br>${fmtDist(sp.d)}${sp.gear.length?"<br>"+sp.gear.join(", "):""}`);
-      b.push([sp.lat,sp.lon]);
-    });
-    try{ LMap.fitBounds(b,{padding:[25,25],maxZoom:15}); }catch(e){}
+    /* un clic sur la carte relance la recherche à cet endroit */
+    LMap.on("click",e=>searchAt(+e.latlng.lat.toFixed(5),+e.latlng.lng.toFixed(5),"Point choisi"));
+    if(spots){
+      L.circleMarker([spots.lat,spots.lon],{radius:7,color:"#5B54B8",fillColor:"#5B54B8",
+        fillOpacity:.9,weight:2}).addTo(LMap).bindPopup(spots.place||"Point de recherche");
+      L.circle([spots.lat,spots.lon],{radius:spots.rad,color:"#5B54B8",weight:1,
+        opacity:.35,fillOpacity:.05}).addTo(LMap);
+      const b=[[spots.lat,spots.lon]];
+      spots.list.forEach(sp=>{
+        L.circleMarker([sp.lat,sp.lon],{radius:8,color:"#D97583",fillColor:"#D97583",
+          fillOpacity:.75,weight:2}).addTo(LMap)
+          .bindPopup(`<b>${sp.n}</b><br>${fmtDist(sp.d)}${sp.gear.length?"<br>"+sp.gear.join(", "):""}`);
+        b.push([sp.lat,sp.lon]);
+      });
+      if(spots.list.length){ try{ LMap.fitBounds(b,{padding:[25,25],maxZoom:15}); }catch(e){} }
+    }
     setTimeout(()=>LMap.invalidateSize(),120);
   }).catch(()=>{});
 }
 
 function vSpots(){
   let h=`<p class="note">Aires de street workout, barres de traction et agrès en accès libre,
-    recensés sur OpenStreetMap. Nécessite une connexion et ta position.</p>`;
+    recensés sur OpenStreetMap.</p>`;
 
-  h+=`<div class="seg" style="margin-bottom:12px">
+  /* recherche d'un lieu */
+  h+=`<div class="wbar"><input id="spq" type="text" placeholder="Une ville, une adresse…"
+      autocomplete="off" value="${esc(spotState.q||"")}">
+    <button class="addb" id="spGo">${spotState.geo?"…":"Chercher"}</button></div>`;
+
+  if(spotState.results&&spotState.results.length){
+    h+=`<div class="sechead"><h3>Choisis un lieu</h3><span>${spotState.results.length} résultats</span></div>
+      <div class="card" style="margin-bottom:12px">`;
+    spotState.results.forEach((r,i)=>{
+      h+=`<div class="rline" data-place="${i}">
+        <span class="ms-dot"></span><span style="flex:1"><b>${esc(r.n)}</b></span>
+        <span class="qty">voir</span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  h+=`<button class="save" id="findSpots" ${spotState.loading?"disabled":""}>
+    ${spotState.loading?"Recherche…":"Autour de ma position"}</button>`;
+
+  h+=`<div class="seg" style="margin-top:12px">
     ${[[1000,"1 km"],[3000,"3 km"],[10000,"10 km"]].map(([r,l])=>
       `<button data-rad="${r}" class="${spotState.radius===r?'on':''}">${l}</button>`).join("")}</div>`;
 
-  h+=`<button class="save" id="findSpots" ${spotState.loading?"disabled":""}>
-    ${spotState.loading?"Recherche…":spots?"Actualiser autour de moi":"Trouver les spots près de moi"}</button>`;
-
   if(spotState.err) h+=`<div class="warn" style="margin-top:13px">${esc(spotState.err)}</div>`;
 
-  if(spots){
-    const age=Math.round((Date.now()-spots.at)/60000);
-    h+=`<div id="map" class="map"></div>
-      <p class="note" style="margin-top:9px">${spots.list.length} spot${spots.list.length>1?"s":""}
-      dans un rayon de ${spots.rad/1000} km · relevé il y a ${age<1?"moins d'une minute":age<60?age+" min":Math.round(age/60)+" h"}</p>`;
+  /* carte toujours visible */
+  h+=`<div id="map" class="map"></div>
+    <p class="note" style="margin-top:9px">${spots
+      ? `<b>${esc(spots.place||"Zone")}</b> · ${spots.list.length} spot${spots.list.length>1?"s":""}
+         dans ${spots.rad/1000} km — touche la carte pour chercher ailleurs.`
+      : `Touche un point de la carte pour chercher autour, ou utilise le bouton ci-dessus.`}</p>`;
 
+  if(spots){
     if(!spots.list.length){
       h+=`<div class="empty">Rien de recensé dans ce rayon.<br>Élargis la zone, ou vérifie
         les parcs et stades autour de toi : beaucoup d'agrès ne sont pas encore cartographiés.</div>`;
@@ -2562,76 +2618,6 @@ function vSpots(){
     Un spot manque ? Tu peux l'ajouter toi-même sur openstreetmap.org.<br><br>
     Pense aussi aux parcours de santé, stades municipaux et cours d'école ouvertes le week-end.</div>`;
   return h;
-}
-
-
-/* ---------- HISTORIQUE DES CALORIES ---------- */
-let histDays=30;
-function histSeries(n){
-  const out=[];
-  for(let i=n-1;i>=0;i--){
-    const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()-i);
-    const k=kcalOfDate(iso(d));
-    out.push({d:iso(d),t:d.getTime(),k});
-  }
-  return out;
-}
-/* moyenne glissante sur 7 jours, calculée sur les jours réellement suivis */
-function movAvg(ser){
-  return ser.map((p,i)=>{
-    const w=ser.slice(Math.max(0,i-6),i+1).filter(x=>x.k>0);
-    return w.length>=3?w.reduce((a,x)=>a+x.k,0)/w.length:null;
-  });
-}
-function histChart(){
-  const ser=histSeries(histDays), ma=movAvg(ser);
-  const c=calc(), tgt=c?c.target:2200;
-  const vals=ser.filter(p=>p.k>0).map(p=>p.k);
-  if(!vals.length) return `<div class="empty">Aucune journée enregistrée.<br>
-    Note ce que tu manges et la courbe se construira toute seule.</div>`;
-  const W=320,H=170,pad={l:34,r:10,t:12,b:22};
-  const mx=Math.max(tgt*1.15,...vals), mn=0;
-  const X=i=>pad.l+i*(W-pad.l-pad.r)/Math.max(1,ser.length-1);
-  const Y=v=>pad.t+(mx-v)/(mx-mn)*(H-pad.t-pad.b);
-  let g="";
-  [0,tgt/2,tgt,mx].forEach(v=>{
-    g+=`<line x1="${pad.l}" y1="${Y(v)}" x2="${W-pad.r}" y2="${Y(v)}" stroke="#E4E1F0"/>
-        <text x="2" y="${Y(v)+4}" font-size="8" fill="#837D97" font-family="monospace">${Math.round(v)}</text>`;
-  });
-  g+=`<line x1="${pad.l}" y1="${Y(tgt)}" x2="${W-pad.r}" y2="${Y(tgt)}"
-      stroke="#8AA86B" stroke-width="1.5" stroke-dasharray="5 4"/>
-      <text x="${W-pad.r}" y="${Y(tgt)-4}" font-size="8" fill="#8AA86B"
-      text-anchor="end" font-family="monospace">OBJECTIF ${tgt}</text>`;
-  /* barres quotidiennes */
-  const bw=Math.max(2,(W-pad.l-pad.r)/ser.length-1.5);
-  ser.forEach((p,i)=>{
-    if(!p.k) return;
-    const col=p.k>tgt*1.05?"#D97583":p.k<tgt*0.75?"#5AA6A0":"#8AA86B";
-    g+=`<rect x="${X(i)-bw/2}" y="${Y(p.k)}" width="${bw}" height="${Y(0)-Y(p.k)}"
-        rx="1.5" fill="${col}" opacity=".55"/>`;
-  });
-  /* tendance 7 jours */
-  const pts=ma.map((v,i)=>v==null?null:X(i)+","+Y(v)).filter(Boolean);
-  if(pts.length>1)
-    g+=`<polyline fill="none" stroke="#5B54B8" stroke-width="2.4" stroke-linejoin="round"
-        stroke-linecap="round" points="${pts.join(" ")}"/>`;
-  const f=t=>new Date(t).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"});
-  g+=`<text x="${pad.l}" y="${H-6}" font-size="8" fill="#837D97" font-family="monospace">${f(ser[0].t)}</text>
-      <text x="${W-pad.r}" y="${H-6}" font-size="8" fill="#837D97" text-anchor="end"
-      font-family="monospace">${f(ser[ser.length-1].t)}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="170">${g}</svg>`;
-}
-/* moyennes des 8 dernières semaines */
-function weekStats(){
-  const out=[];
-  for(let o=0;o>-8;o--){
-    const ds=weekDates(o).map(kcalOfDate).filter(k=>k>0);
-    if(!ds.length&&o<-1) continue;
-    out.push({off:o,n:ds.length,
-      avg:ds.length?Math.round(ds.reduce((a,b)=>a+b,0)/ds.length):0,
-      tot:ds.reduce((a,b)=>a+b,0)});
-  }
-  return out;
 }
 
 /* ---- navigation ---- */
@@ -2711,7 +2697,7 @@ function refresh(){
 }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-hist],[data-woff],[data-wjump],[data-rad],#findSpots,[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-hist],[data-woff],[data-wjump],[data-rad],[data-place],#findSpots,#spGo,[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -2746,7 +2732,17 @@ document.addEventListener("click",e=>{
   if(t.dataset.fcat!==undefined&&edit){ edit.cat=t.dataset.fcat; return refresh(); }
   if(t.dataset.jcat!==undefined){ jcat=t.dataset.jcat; return refresh(); }
   if(t.id==="findSpots"){ return findSpots(); }
-  if(t.dataset.rad){ spotState.radius=+t.dataset.rad; return refresh(); }
+  if(t.id==="spGo"){ return doGeocode(); }
+  if(t.dataset.place!==undefined){
+    const r=spotState.results[+t.dataset.place];
+    if(r) searchAt(r.lat,r.lon,r.n.split(",")[0]);
+    return;
+  }
+  if(t.dataset.rad){
+    spotState.radius=+t.dataset.rad;
+    if(spots) return searchAt(spots.lat,spots.lon,spots.place);   /* on relance sur le nouveau rayon */
+    return refresh();
+  }
   if(t.dataset.hist){ histDays=+t.dataset.hist; return refresh(); }
   if(t.dataset.woff!==undefined){ wOff=Math.min(0,wOff+ +t.dataset.woff); return refresh(); }
   if(t.dataset.wjump!==undefined){
@@ -2890,6 +2886,7 @@ document.addEventListener("click",e=>{
   }
 });
 document.addEventListener("input",e=>{
+  if(e.target.id==="spq"){ spotState.q=e.target.value; return; }
   if(e.target.id==="jq"){
     jq=e.target.value;
     const box=document.getElementById("jres");
@@ -2926,6 +2923,7 @@ function toast(msg){
 }
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape"&&tab) goHome();
+  if(e.key==="Enter"&&e.target.id==="spq"){ e.preventDefault(); doGeocode(); return; }
   if(e.key==="Enter"&&e.target.id==="gIn"){ e.preventDefault(); document.getElementById("gAdd").click(); }
 });
 
