@@ -372,6 +372,12 @@ ul.plain{margin:0;padding:0;list-style:none;}
   width:30px;height:30px;border-radius:9px;font-size:16px;flex-shrink:0;}
 .wnav:disabled{opacity:.3;}
 .wnav:active{border-color:var(--brand);}
+
+.wnavbar{display:flex;align-items:center;justify-content:space-between;
+  background:var(--surf);border:1px solid var(--line);border-radius:14px;
+  padding:8px 10px;margin-bottom:13px;box-shadow:var(--shadow);}
+.daysub{font-family:var(--mono);font-size:10px;color:var(--muted);
+  font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px;}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 </head>
@@ -771,7 +777,7 @@ const EXERCISE_GUIDE = [
 ];
 
 
-const APP_VERSION="35";
+const APP_VERSION="36";
 const DAYS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 
 
@@ -1196,20 +1202,26 @@ const toG=(v,u)=>Math.max(1,Math.round(v*perUnit(u)));
 
 /* ---------- SYNCHRONISER LA LISTE AVEC LES REPAS ---------- */
 /* tous les ingrédients nécessaires sur les 7 jours */
+function withCurrentWeek(fn){
+  const saved=wOff; wOff=0;
+  try{ return fn(); } finally{ wOff=saved; }
+}
 function needed(){
-  const out=new Map();
-  DAYS.forEach(d=>{
-    const r=dayInfo(d).r;
-    MEALS[d].forEach((m,i)=>{
-      if(meals[mkey(d,i)]) return;          // déjà mangé : plus besoin de l'acheter
-      const mo=mealOf(d,i);
-      mo.items.forEach(x=>{
-        const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
-        if(!out.has(norm(nm))) out.set(norm(nm),{n:nm,q:mo.custom?x.q:scaleQ(x.q,r)});
+  return withCurrentWeek(()=>{
+    const out=new Map();
+    DAYS.forEach(d=>{
+      const r=dayInfo(d).r;
+      MEALS[d].forEach((m,i)=>{
+        if(meals[eatKey(d,i)]) return;        // déjà mangé : plus besoin de l'acheter
+        const mo=mealOf(d,i);
+        mo.items.forEach(x=>{
+          const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
+          if(!out.has(norm(nm))) out.set(norm(nm),{n:nm,q:mo.custom?x.q:scaleQ(x.q,r)});
+        });
       });
     });
+    return out;
   });
-  return out;
 }
 /* ce qui traîne dans la liste sans servir à aucun repas (hors ajouts perso) */
 function unusedItems(){
@@ -1217,7 +1229,7 @@ function unusedItems(){
   return list.filter(x=>x.o!=="user"&&!x.done&&!need.has(norm(x.n)));
 }
 /* nombre de repas déjà cochés sur la semaine */
-const eatenCount=()=>DAYS.reduce((s,d)=>s+MEALS[d].filter((m,i)=>meals[mkey(d,i)]).length,0);
+const eatenCount=()=>withCurrentWeek(()=>DAYS.reduce((s,d)=>s+MEALS[d].filter((m,i)=>meals[eatKey(d,i)]).length,0));
 function syncList(){
   const need=needed();
   let add=0;
@@ -1236,16 +1248,18 @@ function syncList(){
 
 /* ingrédients nécessaires pour un seul jour */
 function neededDay(d){
-  const out=new Map(), r=dayInfo(d).r;
-  MEALS[d].forEach((m,i)=>{
-    if(meals[mkey(d,i)]) return;            // repas déjà mangé
-    const mo=mealOf(d,i);
-    mo.items.forEach(x=>{
-      const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
-      if(!out.has(norm(nm))) out.set(norm(nm),{n:nm,q:mo.custom?x.q:scaleQ(x.q,r)});
+  return withCurrentWeek(()=>{
+    const out=new Map(), r=dayInfo(d).r;
+    MEALS[d].forEach((m,i)=>{
+      if(meals[eatKey(d,i)]) return;          // repas déjà mangé
+      const mo=mealOf(d,i);
+      mo.items.forEach(x=>{
+        const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
+        if(!out.has(norm(nm))) out.set(norm(nm),{n:nm,q:mo.custom?x.q:scaleQ(x.q,r)});
+      });
     });
+    return out;
   });
-  return out;
 }
 /* appelé dès qu'un repas change : la liste suit sans rien demander */
 function autoSync(d){
@@ -1301,19 +1315,33 @@ const weekLabel=off=>{
   const f=d=>d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
   return f(s)+" – "+f(e);
 };
-const dateOfDay=n=>weekDates()[DAYS.indexOf(n)];
+const dateOfDay=n=>weekDates(wOff)[DAYS.indexOf(n)];
+const dateOfDay0=n=>weekDates(0)[DAYS.indexOf(n)];          /* toujours la semaine réelle en cours */
+const dkey=(date,i)=>date+"-"+i;                             /* clé "mangé" datée */
+const eatKey=(d,i)=>dkey(dateOfDay(d),i);                     /* selon la semaine consultée */
+const eatKey0=(d,i)=>dkey(dateOfDay0(d),i);                   /* toujours semaine réelle */
+function weekOffsetOf(dateStr){
+  const t=new Date(dateStr+"T12:00:00"); t.setHours(12,0,0,0);
+  t.setDate(t.getDate()-((t.getDay()+6)%7));
+  return Math.round((t-weekStart(0))/(7*dayMs));
+}
+function syncLogDateToWeek(off){
+  const ds=weekDates(off), today=iso(new Date());
+  logDate = ds.includes(today) ? today : (ds.filter(x=>x<=today).pop()||ds[0]);
+}
 const kcalOfDate=d=>Math.round(logTotals(log[d]||[]).k);
 
 /* cocher un repas = l'enregistrer dans le journal du bon jour */
 function toggleMealLog(d,i){
-  const key=mkey(d,i), date=dateOfDay(d), on=!meals[key];
+  const date=dateOfDay(d), key=dkey(date,i), on=!meals[key];
   if(on){
     const r=dayInfo(d).r, mo=mealOf(d,i);   /* avant de cocher */
     meals[key]=true; S.set("meals",meals);
     mo.items.forEach(x=>{
       const nm=x.n.replace(/\s*\(crue?s?\)/,"").trim();
       const f=findFood(nm);
-      const g=gramsOf(mo.custom?x.q:scaleQ(x.q,r))||100;
+      /* repas perso : le grammage exact est déjà connu, pas besoin de le redéduire du texte affiché */
+      const g = (mo.custom && x.g!=null) ? x.g : (gramsOf(mo.custom?x.q:scaleQ(x.q,r))||100);
       if(f) logAdd(f.n,g,key,date);
     });
   }else{
@@ -1389,15 +1417,15 @@ const itemKcal=x=>Math.round(x.g*x.k/100);
 
 /* repas affiché : version perso si elle existe, sinon le plan de saison */
 function mealOf(d,i){
-  const key=mkey(d,i);
-  /* repas déjà mangé : on montre exactement ce qui est parti au journal */
-  if(meals[key]){
-    const e=(log[dateOfDay(d)]||[]).filter(x=>x.src===key);
+  const tkey=mkey(d,i), ek=eatKey(d,i);
+  /* repas déjà mangé : on montre exactement ce qui est parti au journal, pour cette date précise */
+  if(meals[ek]){
+    const e=(log[dateOfDay(d)]||[]).filter(x=>x.src===ek);
     if(e.length) return {custom:false, eaten:true,
-      items:e.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x)}))};
+      items:e.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x),g:x.g}))};
   }
-  const cu=custom[key];
-  if(cu) return {custom:true, items:cu.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x)})), raw:cu};
+  const cu=custom[tkey];
+  if(cu) return {custom:true, items:cu.map(x=>({n:x.n,q:dispQ(x),k:itemKcal(x),g:x.g})), raw:cu};
   return {custom:false, items:mealItems(d,i)};
 }
 const sumK=a=>a.reduce((s,x)=>s+(x.k||0),0);
@@ -1410,7 +1438,7 @@ function dayInfo(d){
   const eaten=Math.round(logTotals(log[date]||[]).k);
   let fixed=0, rest=0, nCustom=0, nLeft=0;
   MEALS[d].forEach((m,i)=>{
-    if(meals[mkey(d,i)]) return;            // ce repas est déjà mangé et compté
+    if(meals[eatKey(d,i)]) return;          // ce repas est déjà mangé et compté
     const mo=mealOf(d,i), k=sumK(mo.items);
     nLeft++;
     if(mo.custom){ fixed+=k; nCustom++; } else rest+=k;
@@ -1719,7 +1747,12 @@ function monthBar(){
 
 function vRepas(){
   const c=calc();
-  let h=monthBar();
+  const wd=weekDates(wOff), today=iso(new Date());
+  let h=`<div class="wnavbar">
+    <button class="wnav" data-woffr="-1">‹</button>
+    <span class="wk-t">${weekLabel(wOff)}</span>
+    <button class="wnav" data-woffr="1" ${wOff>=0?"disabled":""}>›</button></div>`;
+  h+=monthBar();
   const nStock=stockCount();
   h+=`<button class="toggle ${adapt?'on':''}" id="adaptT">
     <span class="sw"></span>
@@ -1728,11 +1761,12 @@ function vRepas(){
     <span class="state">${adapt?"ON":"OFF"}</span></button>`;
   if(adapt&&!nStock) h+=`<div class="info">Va dans <b>Courses</b> et coche les articles que tu as
     achetés : ils seront considérés comme disponibles et les repas se composeront avec.</div>`;
-  h+=`<p class="note">Poids à peser cru.${adapt?" Les repas piochent dans ce que tu as acheté.":" Fruits, légumes et poissons suivent la saison."}${c?` Objectif <b style="color:var(--lime)">${c.target} kcal/jour</b> — modifie un repas et les autres se rééquilibrent.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}</p>`;
-  DAYS.forEach(d=>{
-    const op=openDay===d, td=d===TODAY, D=dayInfo(d), tot=dayKcal(d);
+  h+=`<p class="note">Poids à peser cru.${adapt?" Les repas piochent dans ce que tu as acheté.":" Fruits, légumes et poissons suivent la saison."}${c?` Objectif <b style="color:var(--lime)">${c.target} kcal/jour</b> — modifie un repas et les autres se rééquilibrent.`:` <b style="color:var(--red)">Complète ton profil</b> pour adapter les quantités.`}${wOff!==0?` <b style="color:var(--cyan)">Semaine passée</b> : coche ou modifie librement, ça met à jour le journal de ces jours-là.`:``}</p>`;
+  DAYS.forEach((d,di)=>{
+    const op=openDay===d, dDate=wd[di], td=dDate===today, D=dayInfo(d), tot=dayKcal(d);
+    const dl=new Date(dDate+"T12:00:00").toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
     h+=`<div class="card"><div class="chead ${td?'now':''}" data-day="${d}">
-      <span>${d}${td?" · aujourd'hui":""}</span>
+      <span>${d} <em class="daysub">${dl}</em>${td?" · aujourd'hui":""}</span>
       <span class="between" style="gap:8px"><span class="kcal">${tot} kcal</span>
       <span class="pl">${op?'–':'+'}</span></span></div>`;
     if(op){
@@ -1744,7 +1778,7 @@ function vRepas(){
       if(D.over) h+=`<div class="alert">Il reste beaucoup de calories à répartir :
         les repas suivants ont été augmentés au maximum.</div>`;
       MEALS[d].forEach((m,i)=>{
-        const k=mkey(d,i), on=meals[k], mo=mealOf(d,i);
+        const k=mkey(d,i), on=meals[eatKey(d,i)], mo=mealOf(d,i);
         h+=`<div class="row"><span class="box ${on?'on':''}" data-m="${k}"></span><span class="grow">
           <span class="between" style="margin-bottom:6px">
             <span><span class="mtype">${esc(m.type)}</span>
@@ -2254,7 +2288,7 @@ function vJournal(){
     <p class="note">Enregistre un repas prévu tel quel.</p><div class="chips">`;
   const pd=DAYS[(new Date(logDate+"T12:00:00").getDay()+6)%7], r=dayInfo(pd).r;
   MEALS[pd].forEach((m,i)=>{
-    const on=!!meals[mkey(pd,i)];
+    const on=!!meals[dkey(logDate,i)];
     h+=`<button class="chip add ${on?'in':''}" data-logmeal="${pd}:${i}">
       <span class="plus">${on?'✓':'+'}</span><span><span class="cn">${esc(m.type)}</span>
       <span class="cq">${kcalOf(pd,i,r)} kcal${on?" · enregistré":""}</span></span></button>`;
@@ -2805,7 +2839,8 @@ function go(k,keep){
   tab=k;
   const p=pcts();
   document.getElementById("ptitle").textContent = k==="edit"
-    ? MEALS[edit.d][edit.i].type : TABS[k].t;
+    ? MEALS[edit.d][edit.i].type : k==="repas"&&wOff!==0
+    ? "Repas · "+weekLabel(wOff) : TABS[k].t;
   document.getElementById("ppct").textContent=
     k==="courses"?p.g+"%": k==="repas"?p.m+"%": k==="sport"?p.w+"%":
     k==="edit"?edit.d:"";
@@ -2815,7 +2850,7 @@ function go(k,keep){
   if(!keep) window.scrollTo(0,0);
 }
 function goHome(){
-  tab=null; renderHome();
+  tab=null; wOff=0; syncLogDateToWeek(0); renderHome();
   page.style.display="none"; home.style.display="block";
   window.scrollTo(0,0);
 }
@@ -2838,7 +2873,7 @@ function refresh(){
 }
 
 document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-hist],[data-woff],[data-wjump],[data-rad],[data-place],#findSpots,#spGo,[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
+  const t=e.target.closest("[data-go],[data-tog],[data-rm],[data-add],[data-m],[data-w],[data-day],[data-ex],[data-del],[data-set],[data-month],.rline[data-set],[data-edit],[data-empty],[data-clearall],[data-reload],[data-food],[data-di],[data-g],[data-hist],[data-woff],[data-woffr],[data-wjump],[data-rad],[data-place],#findSpots,#spGo,[data-fcat],[data-jcat],[data-sugg],#sgNew,[data-jday],[data-log],[data-lrm],[data-lg],[data-logmeal],[data-day-],[data-cart],[data-miss],[data-cartmeal],#adaptT,[data-savemeal],[data-resetmeal],#back,#wAdd,#pSave,#gAdd,#gClear,#gUncheck,#gReset,#gSync,#gPurge");
   if(!t) return;
   if(t.id==="back"){ if(tab==="edit"){ edit=null; return go("repas"); } return goHome(); }
   if(t.dataset.go) return go(t.dataset.go);
@@ -2885,12 +2920,14 @@ document.addEventListener("click",e=>{
     return refresh();
   }
   if(t.dataset.hist){ histDays=+t.dataset.hist; return refresh(); }
-  if(t.dataset.woff!==undefined){ wOff=Math.min(0,wOff+ +t.dataset.woff); return refresh(); }
+  if(t.dataset.woffr!==undefined){
+    wOff=Math.min(0,wOff+ +t.dataset.woffr); syncLogDateToWeek(wOff); return refresh();
+  }
+  if(t.dataset.woff!==undefined){
+    wOff=Math.min(0,wOff+ +t.dataset.woff); syncLogDateToWeek(wOff); return refresh();
+  }
   if(t.dataset.wjump!==undefined){
-    const off=+t.dataset.wjump, ds=weekDates(off);
-    const today=iso(new Date());
-    logDate=ds.find(d=>d===today)||ds.filter(d=>d<=today).pop()||ds[0];
-    wOff=off; return refresh();
+    wOff=+t.dataset.wjump; syncLogDateToWeek(wOff); return refresh();
   }
   if(t.dataset.jday){ logDate=t.dataset.jday; return go("journal"); }
   if(t.dataset.log){ logAdd(t.dataset.log,defaultG(t.dataset.log)); return refresh(); }
@@ -2911,7 +2948,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.dayMinus!==undefined||t.dataset["day-"]!==undefined){
     const step=+(t.dataset["day-"]||t.dataset.dayMinus);
     const d=new Date(logDate+"T12:00:00"); d.setDate(d.getDate()-step);
-    if(iso(d)<=iso(new Date())) logDate=iso(d);
+    if(iso(d)<=iso(new Date())){ logDate=iso(d); wOff=weekOffsetOf(logDate); }
     return refresh();
   }
   if(t.dataset.logmeal){
@@ -3068,7 +3105,21 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Enter"&&e.target.id==="gIn"){ e.preventDefault(); document.getElementById("gAdd").click(); }
 });
 
+function migrateMealsDates(){
+  if(S.get("migDates",false)) return;
+  const converted={};
+  Object.keys(meals).forEach(k=>{
+    const parts=k.split("-"); const idx=parts.pop(); const rest=parts.join("-");
+    if(DAYS.includes(rest)&&meals[k]){
+      converted[dkey(dateOfDay0(rest),idx)]=true;
+    }else if(meals[k]){
+      converted[k]=true;                                     // déjà au bon format (ou inconnu) : conservé tel quel
+    }
+  });
+  meals=converted; S.set("meals",meals); S.set("migDates",true);
+}
 migrateMeals();
+migrateMealsDates();
 goHome();
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
