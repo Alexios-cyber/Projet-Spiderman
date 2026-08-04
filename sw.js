@@ -1,4 +1,4 @@
-const CACHE = "vertigo-v31";
+const CACHE = "vertigo-v35";
 const FILES = [
   "./",
   "./index.html",
